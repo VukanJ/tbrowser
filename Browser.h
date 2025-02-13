@@ -1,7 +1,6 @@
 #ifndef BROWSER_H
 #define BROWSER_H
 
-#include <iostream>
 #include <ncurses.h>
 
 #include "TFile.h"

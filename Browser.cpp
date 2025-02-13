@@ -1,5 +1,5 @@
 #include "Browser.h"
-#include <ncurses.h>
+#include <iostream>
 
 bool resize_flag = false;
 
@@ -47,8 +47,8 @@ void FileBrowser::make_window() {
         delwin(dir_window);
     }
     dir_window = newwin(mainwin_y, 20, 0, 0);
-    refresh();
     box(dir_window, 0, 0);
+    refresh();
 }
 
 void FileBrowser::render() {
@@ -110,7 +110,7 @@ void Viewer::make_window() {
     if (main_window != nullptr) {
         delwin(main_window);
     }
-    main_window = newwin(mainwin_y, mainwin_x-20, 0, 20);
+    main_window = newwin(mainwin_y-5, mainwin_x-20, 0, 20);
     refresh();
     box(main_window, 0, 0);
 }
