@@ -9,7 +9,7 @@ include_directories(${CURSES_INCLUDE_DIR})
 include(${ROOT_USE_FILE})
 
 # Add executable
-add_executable(browse Main.cpp)
+add_executable(browse Main.cpp Browser.cpp)
 
 # Link against ncurses and ROOT
 target_link_libraries(browse ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})
