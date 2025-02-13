@@ -1,0 +1,4 @@
+CompileFlags:
+  Add:
+    - -std=c++26
+    - -I/home/vukan/root/include
