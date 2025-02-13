@@ -30,8 +30,9 @@ int main (int argc, char* argv[]) {
     signal(resize_signal, [](int signum) { resize_flag = true; });
 
 #ifdef DEBUG
-    FileBrowser f("Pb_gamma_100000MeV_10mm_merged.root");
-    f.populate();
+    Viewer viewer;
+    viewer.openFile("./build/Pb_gamma_100000MeV_10mm_merged.root");
+    viewer.Main();
 #else
     if (argc != 2) {
         std::cerr << "Expected single argument <file>" << std::endl;

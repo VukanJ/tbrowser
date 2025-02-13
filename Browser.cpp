@@ -1,11 +1,17 @@
 #include "Browser.h"
+#include <ncurses.h>
 
 bool resize_flag = false;
 
-FileBrowser::FileBrowser() { }
+FileBrowser::FileBrowser() {
+    getmaxyx(stdscr, mainwin_y, mainwin_x);
+    make_window();
+}
 
 FileBrowser::~FileBrowser() {
-    delwin(dir_window);
+    if (dir_window != nullptr) {
+        delwin(dir_window);
+    }
 }
 
 void FileBrowser::populate(std::string filename) {
@@ -36,13 +42,28 @@ void FileBrowser::populate(std::string filename) {
     }
 }
 
+void FileBrowser::make_window() {
+    if (dir_window != nullptr) {
+        delwin(dir_window);
+    }
+    dir_window = newwin(mainwin_y, 20, 0, 0);
+    refresh();
+    box(dir_window, 0, 0);
+}
+
+void FileBrowser::render() {
+    box(dir_window, 0, 0);
+    mvwprintw(dir_window, 0, 2, " TFile ");
+
+    wrefresh(dir_window);
+}
+
 Viewer::Viewer() {
     init_curses();
 }
 
 Viewer::~Viewer() {
     // Shutdown NCURSES
-    delwin(main_window);
     endwin();
 }
 
@@ -85,21 +106,20 @@ void Viewer::handle_resize_events() {
     }
 }
 
-void Viewer::render() {
-    box(main_window, 0, 0);
-    mvwprintw(main_window, 0, 2, " ROOT TFile ");
-
-    wrefresh(main_window);
-    refresh();
-}
-
 void Viewer::make_window() {
     if (main_window != nullptr) {
         delwin(main_window);
     }
-    main_window = newwin(mainwin_y, mainwin_x, 0, 0);
+    main_window = newwin(mainwin_y, mainwin_x-20, 0, 20);
     refresh();
     box(main_window, 0, 0);
+}
+
+void Viewer::render() {
+    box(main_window, 0, 0);
+    mvwprintw(main_window, 0, 2, " Viewer ");
+
+    wrefresh(main_window);
 }
 
 void Viewer::Main() {
@@ -112,5 +132,10 @@ void Viewer::Main() {
                 break;
         }
         render();
+        fileBrowser.render();
     }
+}
+
+void Viewer::openFile(std::string filename) {
+    fileBrowser.populate(filename);
 }

@@ -15,9 +15,11 @@ public:
     FileBrowser();
     ~FileBrowser();
     void populate(std::string filename);
+    void make_window();
+    void render();
 
 private:
-    WINDOW* dir_window;
+    WINDOW* dir_window = nullptr;
     std::array<const char[4], 8> ascii {
         "▖", "▗", "▄", 
         "▌", "▐", "▙", 
@@ -28,6 +30,8 @@ private:
     std::vector<TTree*> m_trees;
     std::vector<TLeaf*> m_leaves;
     std::vector<TH1D*> m_histos;
+    int mainwin_x;
+    int mainwin_y;
 };
 
 class Viewer {
@@ -40,8 +44,11 @@ public:
     void render();
     void Main();
 
+    void openFile(std::string filename);
+
 private:
     void make_window();
+
     FileBrowser fileBrowser;
     WINDOW* main_window = nullptr;
     bool running = true;
