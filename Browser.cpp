@@ -170,17 +170,72 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     }
     attroff(COLOR_PAIR(1));
 
+    // Various annotations
+
+    // Plot Title
+    attron(A_BOLD);
+    mvprintw(0, wx+2, "┤ %s ├", leaf->GetTitle());
+    attroff(A_BOLD);
+
     // Plot stats
-    mvprintw(wy + 1, wx + mainwin_x - 30, "Entries: %i", (int)hist.GetEntries());
-    mvprintw(wy + 2, wx + mainwin_x - 30, "Mean:    %.2f ± %.2f", hist.GetMean(), hist.GetMeanError());
-    mvprintw(wy + 3, wx + mainwin_x - 30, "Std:     %.2f ± %.2f", hist.GetStdDev(), hist.GetStdDevError());
+    int line = 1;
+    if (showstats) {
+        mvprintw(wy + line++, wx + mainwin_x - 30, "Entries: %i", (int)hist.GetEntries());
+        mvprintw(wy + line++, wx + mainwin_x - 30, "Mean:    %.2f ± %.2f", hist.GetMean(), hist.GetMeanError());
+        mvprintw(wy + line++, wx + mainwin_x - 30, "Std:     %.2f ± %.2f", hist.GetStdDev(), hist.GetStdDevError());
+    }
+
+    mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
+    printKeyBindings(wy + line++, wx + mainwin_x - 30);
+
+    mvprintw(wy + mainwin_y + 1, wx + 1, "Draw(<locked>, , )  ");
+
+    plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
     box(win, 0, 0);
+    wrefresh(win);
     refresh();
 
-    /* for (int y = 0, i = 0; y < bins_y / 2; y++) { */
-    /*     for (int x = 0; x < bins_x / 2; x++) { */
-    /*         mvprintw(wy+mainwin_y - y - 2, wx + x + 1, ascii[rand()%8]); */
-    /*     } */
-    /* } */
-
 }
+
+void FileBrowser::printKeyBindings(int y, int x) {
+    int line = y + 2;
+    if (showkeys) {
+        attron(A_UNDERLINE);
+        mvprintw(line++, x, "</> Search branch");
+        mvprintw(line++, x, "<s> Toggle stats box");
+        mvprintw(line++, x, "<d> Enter draw command");
+        mvprintw(line++, x, "<n> Enter entry limit");
+        mvprintw(line++, x, "<l> Toggle log y");
+        mvprintw(line++, x, "<L> Toggle log x");
+        mvprintw(line++, x, "<g> Go to top");
+        mvprintw(line++, x, "<G> Go to bottom");
+        mvprintw(line++, x, "<q/Esc> Quit");
+        attroff(A_UNDERLINE);
+    }
+}
+
+void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax, 
+                           int posy, int posx, int wy, int wx) 
+{
+    std::vector<char> xaxis(wx-1, '-');
+
+    auto xwidth = xmax - xmin;
+    // mvprintw(30, 30, std::to_string(xwidth).c_str());
+    int nticks = 5;
+    for (double xt = xmin; xt <= xmax; xt += xwidth / nticks) {
+        int offset = ((xt - xmin) / xwidth) * wx;
+        xaxis[std::min<int>(offset, xaxis.size() - 1)] = '+';
+    }
+
+    for (int i = 0; char c : xaxis) {
+        if (xaxis[i] == '-') {
+            mvprintw(posy + wy - 1, posx + 1 + i, "─");
+        }
+        else if (xaxis[i] == '+') {
+            mvprintw(posy + wy - 1, posx + 1 + i, "┼");
+        }
+
+        i++;
+    }
+}
+

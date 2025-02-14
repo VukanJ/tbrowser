@@ -97,7 +97,7 @@ int main (int argc, char* argv[]) {
 
         // mvprintw(30, 30, std::to_string((int)input).c_str());
         switch (input) {
-            case 'q':
+            case 'q': case 27:
                 running = false;
                 break;
             case KEY_DOWN:
@@ -115,6 +115,12 @@ int main (int argc, char* argv[]) {
             case '/':
                 mvprintw(30, 30, "SEARCH");
                 break;
+            case 'p':
+                browser.toggleKeyBindings();
+                break;
+            case 's':
+                browser.toggleStatsBox();
+                break;
             case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
                 browser.plotHistogram(mainwindow);
                 break;
@@ -125,3 +131,5 @@ int main (int argc, char* argv[]) {
     endwin();
     return EXIT_SUCCESS;
 }
+
+

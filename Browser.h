@@ -22,10 +22,14 @@ public:
     void select_up() { selected--; }
     void goTop() { selected = 0; }
     void goBottom() { selected = m_leaves.size() - 1; }
-
+    void toggleKeyBindings() { showkeys = !showkeys; }
+    void toggleStatsBox() { 
+        showstats = !showstats; 
+    } 
     void plotHistogram(WINDOW*& win);
 
 private:
+    void printKeyBindings(int y, int x);
     void plotHistogram(WINDOW*& win, TTree*, TLeaf*);
     void plotAxes(double, double, double, double, int, int, int, int);
 
@@ -43,6 +47,8 @@ private:
     int mainwin_x;
     int mainwin_y;
     int selected = 3;
+    bool showkeys = false;
+    bool showstats = true;
 };
 
 #endif // BROWSER_H
