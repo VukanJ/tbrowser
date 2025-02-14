@@ -58,6 +58,9 @@ int main (int argc, char* argv[]) {
     halfdelay(20);
     signal(resize_signal, [](int signum) { resize_flag = true; });
 
+    start_color();
+    init_pair(1, COLOR_BLUE, COLOR_BLACK);
+
     int sizex;
     int sizey;
     getmaxyx(stdscr, sizey, sizex);

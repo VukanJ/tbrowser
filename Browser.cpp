@@ -82,13 +82,15 @@ void FileBrowser::printFiles(int lines, int cols, int x, int y) {
         auto name = std::string(" ") + m_leaves[i]->GetName();
         if (selected == i) {
             attron(A_REVERSE);
-            mvprintw(y + i+1, x, name.c_str());
+            mvprintw(y + i + 1, x, "%.20s", name.c_str());
             attroff(A_REVERSE);
         }
         else {
-            mvprintw(y + i+1, x, name.c_str());
+            mvprintw(y + i+1, x, "%.20s", name.c_str());
         }
     }
+    box(dir_window, 0, 0);
+    wrefresh(dir_window);
 }
 
 void FileBrowser::plotHistogram(WINDOW*& win) {
@@ -100,68 +102,63 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     int wx = 0;
     int wy = 0;
     getbegyx(win, wy, wx);
-    mvprintw(debug++, wx, "Plotting %s %s", leaf->GetName(), leaf->GetTitle());
+    // mvprintw(debug++, wx, "Plotting %s %s", leaf->GetName(), leaf->GetTitle());
     getmaxyx(win, mainwin_y, mainwin_x);
+    box(win, 0, 0);
+    wrefresh(win);
+    wclear(win);
     auto bins_x = 2*(mainwin_x - 2); // 20=Width of browser, 4 border characters. x2: 2bins per character
     auto bins_y = 2*(mainwin_y - 2);
-    auto min = INFINITY;
-    auto max = -INFINITY;
+    auto min = tree->GetMinimum(leaf->GetName());
+    auto max = tree->GetMaximum(leaf->GetName());
     Long64_t nEntries = tree->GetEntries();
-    for (Long64_t i = 0; i < nEntries; ++i) {
-        tree->GetEntry(i);
-        float value = leaf->GetValue();
-        if (value < min) min = value;
-        if (value > max) max = value;
-    }
-    mvprintw(debug++, wx, "winsize %i %i", mainwin_x, mainwin_y);
-    mvprintw(debug++, wx, "bins %i %i", bins_x, bins_y);
-    mvprintw(debug++, wx, "minmax %f %f", min, max);
+    // mvprintw(debug++, wx, "winsize %i %i", mainwin_x, mainwin_y);
+    // mvprintw(debug++, wx, "bins %i %i", bins_x, bins_y);
+    // mvprintw(debug++, wx, "minmax %f %f", min, max);
     if (min == max) {
         min = min - 1;
         max = min + 1;
     }
-    std::unique_ptr<TH1F> hist = std::make_unique<TH1F>(leaf->GetName(), leaf->GetTitle(), bins_x, max, min);
+    std::unique_ptr<TH1F> hist = std::make_unique<TH1F>("H", "H", bins_x, max, min);
 
-    for (Long64_t i = 0; i < nEntries; ++i) {
-        tree->GetEntry(i);
-        float value = leaf->GetValue();
-        hist->Fill(value);
-    }
+    tree->Project("H", leaf->GetName());
     
-    auto max_height = hist->GetAt(hist->GetMaximumBin());
-    mvprintw(debug++, wx, "MAXHEIGHT %f", max_height);
+    auto max_height = hist->GetAt(hist->GetMaximumBin())*1.1;
+    // mvprintw(debug++, wx, "MAXHEIGHT %f", max_height);
     
     double binwidth = (max - min) / bins_x;
     double pixel_y = max_height / bins_y;
     // Draw ASCII art
     
-    /* for (int x = 0; x < bins_x / 2; x++) { */
-    /*     auto cl = hist->GetBinContent(2 * x); */
-    /*     auto cr = hist->GetBinContent(2 * x + 1); */
-    /*     for (int y = 0; y < bins_y / 2; ++y) { */
-    /*         // Check if ascii character is filled */
-    /*         std::uint8_t probe = ASCII_code::C_VOID; */
-    /*         probe |= (2*y * pixel_y > cl) << 3; */
-    /*         probe |= (2*y * pixel_y > cr) << 2; */
-    /*         probe |= ((2*y + 1) * pixel_y > cl) << 1; */
-    /*         probe |= ((2*y + 1) * pixel_y > cr); */
-    /*         if (probe == ASCII_code::C_VOID) break; */
+    attron(COLOR_PAIR(1));
+    for (int x = 0; x < bins_x / 2; x++) {
+        auto cl = hist->GetBinContent(2 * x);
+        auto cr = hist->GetBinContent(2 * x + 1);
+        for (int y = 0; y < bins_y / 2; ++y) {
+            // Check if ascii character is filled
+            std::uint8_t probe = ASCII_code::C_VOID;
+            probe |= ((2*y - 1)* pixel_y <= cl) << 3;
+            probe |= ((2*y - 1)* pixel_y <= cr) << 2;
+            probe |= ((2*y + 0) * pixel_y <= cl) << 1;
+            probe |= ((2*y + 0) * pixel_y <= cr);
+            if (probe == ASCII_code::C_VOID) break;
 
-    /*         try { */
-    /*             auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))]; */
-    /*             mvprintw(wy+mainwin_y-2-y, wx+1+x, "%s", print); */
-    /*         } */
-    /*         catch(...) { */
-    /*             std::cout << "ERROR " << +probe << '\n'; */
-    /*         } */
+            try {
+                auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))];
+                mvprintw(wy+mainwin_y-2-y, wx+1+x, "%s", print);
+            }
+            catch(...) {
+                mvprintw(wy+mainwin_y-2-y, wx+1+x, "%i", probe);
+            }
 
-    /*     } */
-    /* } */
-
-    for (int y = 0, i = 0; y < bins_y / 2; y++) {
-        for (int x = 0; x < bins_x / 2; x++) {
-            mvprintw(wy+mainwin_y - y - 2, wx + x + 1, ascii[rand()%8]);
         }
     }
+    attroff(COLOR_PAIR(1));
+
+    /* for (int y = 0, i = 0; y < bins_y / 2; y++) { */
+    /*     for (int x = 0; x < bins_x / 2; x++) { */
+    /*         mvprintw(wy+mainwin_y - y - 2, wx + x + 1, ascii[rand()%8]); */
+    /*     } */
+    /* } */
 
 }
