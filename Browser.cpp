@@ -1,18 +1,13 @@
 #include "Browser.h"
 #include <iostream>
+#include <format>
+#include <ncurses.h>
 
 bool resize_flag = false;
 
-FileBrowser::FileBrowser() {
-    getmaxyx(stdscr, mainwin_y, mainwin_x);
-    make_window();
-}
+FileBrowser::FileBrowser() { }
 
-FileBrowser::~FileBrowser() {
-    if (dir_window != nullptr) {
-        delwin(dir_window);
-    }
-}
+FileBrowser::~FileBrowser() { }
 
 void FileBrowser::populate(std::string filename) {
     // Get Pointers to directories, trees, and histograms
@@ -42,100 +37,17 @@ void FileBrowser::populate(std::string filename) {
     }
 }
 
-void FileBrowser::make_window() {
-    if (dir_window != nullptr) {
-        delwin(dir_window);
-    }
-    dir_window = newwin(mainwin_y, 20, 0, 0);
-    box(dir_window, 0, 0);
-    refresh();
-}
-
-void FileBrowser::render() {
-    box(dir_window, 0, 0);
-    mvwprintw(dir_window, 0, 2, " TFile ");
-
-    wrefresh(dir_window);
-}
-
-Viewer::Viewer() {
-    init_curses();
-}
-
-Viewer::~Viewer() {
-    // Shutdown NCURSES
-    endwin();
-}
-
-void Viewer::init_curses() {
-    // Initialize NCURSES
-    initscr(); // init
-    clear();
-    noecho();
-    nonl(); // No NL in output
-    curs_set(0);
-    cbreak();
-    keypad(stdscr, TRUE);  // Enable keyboard mapping
-    move(0, 0);
-    halfdelay(1); // TODO: Remove
-    if (has_colors()) {
-        start_color();
-        init_pair(1, COLOR_RED, COLOR_BLACK);
-        init_pair(2, COLOR_GREEN, COLOR_BLACK);
-        init_pair(3, COLOR_YELLOW, COLOR_BLACK);
-        init_pair(4, COLOR_BLUE, COLOR_BLACK);
-        init_pair(5, COLOR_CYAN, COLOR_BLACK);
-        init_pair(6, COLOR_MAGENTA, COLOR_BLACK);
-        init_pair(7, COLOR_WHITE, COLOR_BLACK);
-    }
-
-    getmaxyx(stdscr, mainwin_y, mainwin_x);
-    make_window();
-}
-
-void Viewer::handle_resize_events() {
-    if (resize_flag) {
-        getmaxyx(stdscr, mainwin_y, mainwin_x);
-        make_window();
-        resize_flag = false;
-        endwin();
-        refresh(); // Must be called after endwin
-        clear();
-
-        refresh();
-    }
-}
-
-void Viewer::make_window() {
-    if (main_window != nullptr) {
-        delwin(main_window);
-    }
-    main_window = newwin(mainwin_y-5, mainwin_x-20, 0, 20);
-    refresh();
-    box(main_window, 0, 0);
-}
-
-void Viewer::render() {
-    box(main_window, 0, 0);
-    mvwprintw(main_window, 0, 2, " Viewer ");
-
-    wrefresh(main_window);
-}
-
-void Viewer::Main() {
-    while (running) {
-        handle_resize_events();
-        int ch = getch();
-        switch (ch) {
-            case 'q': 
-                running = false; 
-                break;
+void FileBrowser::printFiles(int lines, int cols, int x, int y) {
+    mvprintw(x, y, ""); // TODO print tree
+    for (size_t i = 0; i < m_leaves.size(); ++i) {
+        auto name = std::string(" ") + m_leaves[i]->GetName();
+        if (selected == i) {
+            attron(A_REVERSE);
+            mvprintw(y + i+1, x, name.c_str());
+            attroff(A_REVERSE);
         }
-        render();
-        fileBrowser.render();
+        else {
+            mvprintw(y + i+1, x, name.c_str());
+        }
     }
-}
-
-void Viewer::openFile(std::string filename) {
-    fileBrowser.populate(filename);
 }

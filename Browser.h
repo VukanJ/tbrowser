@@ -15,7 +15,15 @@ public:
     ~FileBrowser();
     void populate(std::string filename);
     void make_window();
-    void render();
+
+    void printFiles(int lines, int cols, int x, int y);
+
+    void select_down() {
+        selected++;
+    }
+    void select_up() {
+        selected--;
+    }
 
 private:
     WINDOW* dir_window = nullptr;
@@ -31,29 +39,7 @@ private:
     std::vector<TH1D*> m_histos;
     int mainwin_x;
     int mainwin_y;
-};
-
-class Viewer {
-public:
-    Viewer();
-    ~Viewer();
-
-    void init_curses();
-    void handle_resize_events();
-    void render();
-    void Main();
-
-    void openFile(std::string filename);
-
-private:
-    void make_window();
-
-    FileBrowser fileBrowser;
-    WINDOW* main_window = nullptr;
-    bool running = true;
-    std::string m_filename;
-    int mainwin_x;
-    int mainwin_y;
+    int selected = 3;
 };
 
 #endif // BROWSER_H
