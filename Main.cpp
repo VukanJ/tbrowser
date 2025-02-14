@@ -60,6 +60,7 @@ int main (int argc, char* argv[]) {
 
     start_color();
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);
 
     int sizex;
     int sizey;
@@ -69,7 +70,7 @@ int main (int argc, char* argv[]) {
     WINDOW* mainwindow = nullptr;
     WINDOW* dir_window = nullptr;
     createWindow(mainwindow, sizey - 4, sizex - 20, 20, 0);
-    createWindow(dir_window, sizey, 20, 0, 0);
+    createWindow(dir_window, sizey - 4, 20, 0, 0);
 
     refresh();
     box(mainwindow, 0, 0);
@@ -89,8 +90,8 @@ int main (int argc, char* argv[]) {
             endwin();
             refresh();
             getmaxyx(stdscr, sizey, sizex);
-            createWindow(mainwindow, sizey-4, sizex - 20, 20, 0);
-            createWindow(dir_window, sizey, 20, 0, 0);
+            createWindow(mainwindow, sizey - 4, sizex - 20, 20, 0);
+            createWindow(dir_window, sizey - 4, 20, 0, 0);
         }
 
         mvprintw(30, 30, std::to_string((int)input).c_str());

@@ -3,7 +3,9 @@
 #include <iostream>
 #include <format>
 #include <memory>
+#include <algorithm>
 #include <ncurses.h>
+#include <thread>
 #include <string>
 #include <unordered_map>
 
@@ -78,12 +80,16 @@ void FileBrowser::populate(std::string filename) {
 
 void FileBrowser::printFiles(int lines, int cols, int x, int y) {
     mvprintw(x, y, ""); // TODO print tree
-    for (size_t i = 0; i < m_leaves.size(); ++i) {
+    for (size_t i = 0; i < std::min<int>(mainwin_y-9, m_leaves.size()); ++i) {
         auto name = std::string(" ") + m_leaves[i]->GetName();
         if (selected == i) {
-            attron(A_REVERSE);
+            // attron(A_REVERSE);
+            attron(A_ITALIC);
+            attron(A_BOLD);
             mvprintw(y + i + 1, x, "%.20s", name.c_str());
-            attroff(A_REVERSE);
+            attroff(A_BOLD);
+            attroff(A_ITALIC);
+            // attroff(A_REVERSE);
         }
         else {
             mvprintw(y + i+1, x, "%.20s", name.c_str());
@@ -99,50 +105,61 @@ void FileBrowser::plotHistogram(WINDOW*& win) {
 
 void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     int debug = 1;
+    // Get window position and size
     int wx = 0;
     int wy = 0;
     getbegyx(win, wy, wx);
-    // mvprintw(debug++, wx, "Plotting %s %s", leaf->GetName(), leaf->GetTitle());
     getmaxyx(win, mainwin_y, mainwin_x);
-    box(win, 0, 0);
-    wrefresh(win);
     wclear(win);
+    box(win, 0, 0);
+
+    attron(A_BLINK);
+    mvprintw(wy + mainwin_y / 2, wx + mainwin_x / 2, "Please Wait...");
+    attroff(A_BLINK);
+    wrefresh(win);
+    refresh();
+
+    // std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    // Get bounds
+    const char* leafname = leaf->GetName();
     auto bins_x = 2*(mainwin_x - 2); // 20=Width of browser, 4 border characters. x2: 2bins per character
     auto bins_y = 2*(mainwin_y - 2);
-    auto min = tree->GetMinimum(leaf->GetName());
-    auto max = tree->GetMaximum(leaf->GetName());
-    Long64_t nEntries = tree->GetEntries();
-    // mvprintw(debug++, wx, "winsize %i %i", mainwin_x, mainwin_y);
-    // mvprintw(debug++, wx, "bins %i %i", bins_x, bins_y);
-    // mvprintw(debug++, wx, "minmax %f %f", min, max);
+    auto min = tree->GetMinimum(leafname);
+    auto max = tree->GetMaximum(leafname);
     if (min == max) {
+        // Handle single value histograms
         min = min - 1;
         max = min + 1;
     }
-    std::unique_ptr<TH1F> hist = std::make_unique<TH1F>("H", "H", bins_x, max, min);
+    TH1F hist("H", "H", bins_x, max, min);
 
-    tree->Project("H", leaf->GetName());
+    tree->Project("H", leafname);
     
-    auto max_height = hist->GetAt(hist->GetMaximumBin())*1.1;
-    // mvprintw(debug++, wx, "MAXHEIGHT %f", max_height);
-    
+    auto max_height = hist.GetAt(hist.GetMaximumBin())*1.1;
+
     double binwidth = (max - min) / bins_x;
     double pixel_y = max_height / bins_y;
     // Draw ASCII art
     
     attron(COLOR_PAIR(1));
     for (int x = 0; x < bins_x / 2; x++) {
-        auto cl = hist->GetBinContent(2 * x);
-        auto cr = hist->GetBinContent(2 * x + 1);
+        auto cl = hist.GetBinContent(2 * x);
+        auto cr = hist.GetBinContent(2 * x + 1);
         for (int y = 0; y < bins_y / 2; ++y) {
             // Check if ascii character is filled
             std::uint8_t probe = ASCII_code::C_VOID;
-            probe |= ((2*y - 1)* pixel_y <= cl) << 3;
-            probe |= ((2*y - 1)* pixel_y <= cr) << 2;
-            probe |= ((2*y + 0) * pixel_y <= cl) << 1;
-            probe |= ((2*y + 0) * pixel_y <= cr);
-            if (probe == ASCII_code::C_VOID) break;
-
+            probe |= ((2*y - 0.5)* pixel_y <= cl) << 3;
+            probe |= ((2*y - 0.5)* pixel_y <= cr) << 2;
+            probe |= ((2*y + 0.5) * pixel_y <= cl) << 1;
+            probe |= ((2*y + 0.5) * pixel_y <= cr);
+            if (probe == ASCII_code::C_VOID) {
+                // fill rest with blanks, prevents overdraw...
+                for (int f = y; f < bins_y / 2; ++f) {
+                    mvprintw(wy+mainwin_y-2-f, wx+1+x, " ");
+                }
+                break;
+            }
             try {
                 auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))];
                 mvprintw(wy+mainwin_y-2-y, wx+1+x, "%s", print);
