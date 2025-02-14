@@ -18,18 +18,16 @@ public:
 
     void printFiles(int lines, int cols, int x, int y);
 
-    void select_down() {
-        selected++;
-    }
-
-    void select_up() {
-        selected--;
-    }
+    void select_down() { selected++; }
+    void select_up() { selected--; }
+    void goTop() { selected = 0; }
+    void goBottom() { selected = m_leaves.size() - 1; }
 
     void plotHistogram(WINDOW*& win);
 
 private:
     void plotHistogram(WINDOW*& win, TTree*, TLeaf*);
+    void plotAxes(double, double, double, double, int, int, int, int);
 
     WINDOW* dir_window = nullptr;
     std::array<const char[4], 8> ascii {

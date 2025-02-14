@@ -61,6 +61,7 @@ int main (int argc, char* argv[]) {
     start_color();
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);
 
     int sizex;
     int sizey;
@@ -83,7 +84,7 @@ int main (int argc, char* argv[]) {
         browser.printFiles(sizey, sizex, 1, 1);
 
         int input = getch();
-        mvprintw(0, 20, std::to_string(nredraws++).c_str());
+        // mvprintw(0, 20, std::to_string(nredraws++).c_str());
         
         if (resize_flag) {
             resize_flag = false;
@@ -94,7 +95,7 @@ int main (int argc, char* argv[]) {
             createWindow(dir_window, sizey - 4, 20, 0, 0);
         }
 
-        mvprintw(30, 30, std::to_string((int)input).c_str());
+        // mvprintw(30, 30, std::to_string((int)input).c_str());
         switch (input) {
             case 'q':
                 running = false;
@@ -104,6 +105,15 @@ int main (int argc, char* argv[]) {
                 break;
             case KEY_UP:
                 browser.select_up();
+                break;
+            case 'g':
+                browser.goTop();
+                break;
+            case 'G':
+                browser.goBottom();
+                break;
+            case '/':
+                mvprintw(30, 30, "SEARCH");
                 break;
             case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
                 browser.plotHistogram(mainwindow);

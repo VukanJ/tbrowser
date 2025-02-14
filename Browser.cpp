@@ -44,7 +44,7 @@ std::unordered_map<ASCII_code, ASCII> ascii_map = {
     {C_FULL_BLOCK, FULL_BLOCK},
 };
 
-bool resize_flag = false;
+volatile bool resize_flag = false;
 
 FileBrowser::FileBrowser() { }
 
@@ -79,20 +79,20 @@ void FileBrowser::populate(std::string filename) {
 }
 
 void FileBrowser::printFiles(int lines, int cols, int x, int y) {
-    mvprintw(x, y, ""); // TODO print tree
+    // mvwprintw(dir_window, x, y, ""); // TODO print tree
     for (size_t i = 0; i < std::min<int>(mainwin_y-9, m_leaves.size()); ++i) {
-        auto name = std::string(" ") + m_leaves[i]->GetName();
+        auto name = m_leaves[i]->GetName();
         if (selected == i) {
             // attron(A_REVERSE);
             attron(A_ITALIC);
             attron(A_BOLD);
-            mvprintw(y + i + 1, x, "%.20s", name.c_str());
+            mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
             attroff(A_BOLD);
             attroff(A_ITALIC);
             // attroff(A_REVERSE);
         }
         else {
-            mvprintw(y + i+1, x, "%.20s", name.c_str());
+            mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
         }
     }
     box(dir_window, 0, 0);
@@ -118,8 +118,6 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     attroff(A_BLINK);
     wrefresh(win);
     refresh();
-
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
 
     // Get bounds
     const char* leafname = leaf->GetName();
@@ -171,6 +169,13 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
         }
     }
     attroff(COLOR_PAIR(1));
+
+    // Plot stats
+    mvprintw(wy + 1, wx + mainwin_x - 30, "Entries: %i", (int)hist.GetEntries());
+    mvprintw(wy + 2, wx + mainwin_x - 30, "Mean:    %.2f ± %.2f", hist.GetMean(), hist.GetMeanError());
+    mvprintw(wy + 3, wx + mainwin_x - 30, "Std:     %.2f ± %.2f", hist.GetStdDev(), hist.GetStdDevError());
+    box(win, 0, 0);
+    refresh();
 
     /* for (int y = 0, i = 0; y < bins_y / 2; y++) { */
     /*     for (int x = 0; x < bins_x / 2; x++) { */
