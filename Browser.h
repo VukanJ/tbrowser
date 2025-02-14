@@ -21,16 +21,21 @@ public:
     void select_down() {
         selected++;
     }
+
     void select_up() {
         selected--;
     }
 
+    void plotHistogram(WINDOW*& win);
+
 private:
+    void plotHistogram(WINDOW*& win, TTree*, TLeaf*);
+
     WINDOW* dir_window = nullptr;
     std::array<const char[4], 8> ascii {
         "▖", "▗", "▄", 
         "▌", "▐", "▙", 
-        "▟", "█"
+        "▟", "█",
     };
     std::unique_ptr<TFile> m_tfile;
     std::string m_filename;

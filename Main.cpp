@@ -13,18 +13,6 @@
 
 #undef DEBUG
 
-enum ASCII : std::uint8_t {
-    LOWER_LEFT,
-    LOWER_RIGHT,
-    LOWER_HALF,
-    LEFT_HALF,
-    RIGHT_HALF,
-    STAIRS_LEFT,
-    STAIRS_RIGHT,
-    FULL_BLOCK,
-    VOID
-};
-
 int resize_signal = SIGWINCH;
 extern bool resize_flag;
 
@@ -41,6 +29,10 @@ void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y) {
 
 
 int main (int argc, char* argv[]) {
+#ifdef DEBUG
+    FileBrowser browser;
+    browser.populate("build/Pb_proton_1000MeV_20mm_merged.root");
+#else
     FileBrowser browser;
     if (argc == 2) {
         if (std::filesystem::exists(argv[1])) {
@@ -54,6 +46,7 @@ int main (int argc, char* argv[]) {
     else {
         return EXIT_FAILURE;
     }
+#endif
 
     // Init NCURSES
     setlocale(LC_ALL, "");
@@ -109,7 +102,7 @@ int main (int argc, char* argv[]) {
                 browser.select_up();
                 break;
             case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
-                browser.select_up();
+                browser.plotHistogram(mainwindow);
                 break;
         }
     }

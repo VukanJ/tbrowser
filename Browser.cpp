@@ -1,7 +1,46 @@
 #include "Browser.h"
+#include "RtypesCore.h"
 #include <iostream>
 #include <format>
+#include <memory>
 #include <ncurses.h>
+#include <string>
+#include <unordered_map>
+
+enum ASCII : std::uint8_t {
+    LOWER_LEFT,
+    LOWER_RIGHT,
+    LOWER_HALF,
+    LEFT_HALF,
+    RIGHT_HALF,
+    STAIRS_LEFT,
+    STAIRS_RIGHT,
+    FULL_BLOCK,
+    VOID,
+};
+enum ASCII_code : std::uint8_t {
+    C_LOWER_LEFT   = 0b1000,
+    C_LOWER_RIGHT  = 0b0100,
+    C_LOWER_HALF   = 0b1100,
+    C_LEFT_HALF    = 0b1010,
+    C_RIGHT_HALF   = 0b0101,
+    C_STAIRS_LEFT  = 0b1110,
+    C_STAIRS_RIGHT = 0b1101,
+    C_FULL_BLOCK   = 0b1111,
+    C_VOID         = 0b0000,
+};
+
+std::unordered_map<ASCII_code, ASCII> ascii_map = {
+    {C_VOID, VOID},
+    {C_LOWER_LEFT, LOWER_LEFT},
+    {C_LOWER_RIGHT, LOWER_RIGHT},
+    {C_LOWER_HALF, LOWER_HALF},
+    {C_LEFT_HALF, LEFT_HALF},
+    {C_RIGHT_HALF, RIGHT_HALF},
+    {C_STAIRS_LEFT, STAIRS_LEFT},
+    {C_STAIRS_RIGHT, STAIRS_RIGHT},
+    {C_FULL_BLOCK, FULL_BLOCK},
+};
 
 bool resize_flag = false;
 
@@ -50,4 +89,79 @@ void FileBrowser::printFiles(int lines, int cols, int x, int y) {
             mvprintw(y + i+1, x, name.c_str());
         }
     }
+}
+
+void FileBrowser::plotHistogram(WINDOW*& win) {
+    plotHistogram(win, *m_trees.begin(), m_leaves.at(selected));
+}
+
+void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
+    int debug = 1;
+    int wx = 0;
+    int wy = 0;
+    getbegyx(win, wy, wx);
+    mvprintw(debug++, wx, "Plotting %s %s", leaf->GetName(), leaf->GetTitle());
+    getmaxyx(win, mainwin_y, mainwin_x);
+    auto bins_x = 2*(mainwin_x - 2); // 20=Width of browser, 4 border characters. x2: 2bins per character
+    auto bins_y = 2*(mainwin_y - 2);
+    auto min = INFINITY;
+    auto max = -INFINITY;
+    Long64_t nEntries = tree->GetEntries();
+    for (Long64_t i = 0; i < nEntries; ++i) {
+        tree->GetEntry(i);
+        float value = leaf->GetValue();
+        if (value < min) min = value;
+        if (value > max) max = value;
+    }
+    mvprintw(debug++, wx, "winsize %i %i", mainwin_x, mainwin_y);
+    mvprintw(debug++, wx, "bins %i %i", bins_x, bins_y);
+    mvprintw(debug++, wx, "minmax %f %f", min, max);
+    if (min == max) {
+        min = min - 1;
+        max = min + 1;
+    }
+    std::unique_ptr<TH1F> hist = std::make_unique<TH1F>(leaf->GetName(), leaf->GetTitle(), bins_x, max, min);
+
+    for (Long64_t i = 0; i < nEntries; ++i) {
+        tree->GetEntry(i);
+        float value = leaf->GetValue();
+        hist->Fill(value);
+    }
+    
+    auto max_height = hist->GetAt(hist->GetMaximumBin());
+    mvprintw(debug++, wx, "MAXHEIGHT %f", max_height);
+    
+    double binwidth = (max - min) / bins_x;
+    double pixel_y = max_height / bins_y;
+    // Draw ASCII art
+    
+    /* for (int x = 0; x < bins_x / 2; x++) { */
+    /*     auto cl = hist->GetBinContent(2 * x); */
+    /*     auto cr = hist->GetBinContent(2 * x + 1); */
+    /*     for (int y = 0; y < bins_y / 2; ++y) { */
+    /*         // Check if ascii character is filled */
+    /*         std::uint8_t probe = ASCII_code::C_VOID; */
+    /*         probe |= (2*y * pixel_y > cl) << 3; */
+    /*         probe |= (2*y * pixel_y > cr) << 2; */
+    /*         probe |= ((2*y + 1) * pixel_y > cl) << 1; */
+    /*         probe |= ((2*y + 1) * pixel_y > cr); */
+    /*         if (probe == ASCII_code::C_VOID) break; */
+
+    /*         try { */
+    /*             auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))]; */
+    /*             mvprintw(wy+mainwin_y-2-y, wx+1+x, "%s", print); */
+    /*         } */
+    /*         catch(...) { */
+    /*             std::cout << "ERROR " << +probe << '\n'; */
+    /*         } */
+
+    /*     } */
+    /* } */
+
+    for (int y = 0, i = 0; y < bins_y / 2; y++) {
+        for (int x = 0; x < bins_x / 2; x++) {
+            mvprintw(wy+mainwin_y - y - 2, wx + x + 1, ascii[rand()%8]);
+        }
+    }
+
 }
