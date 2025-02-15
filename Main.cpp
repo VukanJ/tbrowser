@@ -46,7 +46,7 @@ int main (int argc, char* argv[]) {
     MEVENT mouse_event;
 
     while (running) {
-        browser.printFiles(1, 1);
+        browser.printFiles();
 
         int input = getch();
         

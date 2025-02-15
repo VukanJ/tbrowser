@@ -57,6 +57,7 @@ FileBrowser::FileBrowser() {
     wrefresh(main_window);
 
     getmaxyx(stdscr, terminal_size_y, terminal_size_x);
+    directory.root.type = DirectoryStructure::Node::NodeType::ROOT;
 }
 
 FileBrowser::~FileBrowser() {
@@ -85,6 +86,7 @@ void FileBrowser::init_ncurses() {
     init_pair(3, COLOR_GREEN, COLOR_BLACK);
 }
 
+
 void FileBrowser::loadFile(std::string filename) {
     // Get Pointers to directories, trees, and histograms
     m_filename = filename;
@@ -94,10 +96,13 @@ void FileBrowser::loadFile(std::string filename) {
         exit(EXIT_FAILURE);
     }
 
+    DirectoryStructure::Node* node = &directory.root;
+
     for (auto* KEY : *m_tfile->GetListOfKeys()) {
         TKey* key = (TKey*)KEY;
         if (strcmp(key->GetClassName(), "TTree") == 0) {
             m_trees.push_back(static_cast<TTree*>(key->ReadObj()));
+            node->nodes.emplace_back(DirectoryStructure::Node::NodeType::TTREE, m_trees.size() - 1);
         }
         else if (strcmp(key->GetClassName(), "TH1D") == 0) {
             m_histos.push_back(static_cast<TH1D*>(key->ReadObj()));
@@ -111,25 +116,51 @@ void FileBrowser::loadFile(std::string filename) {
             m_leaves.push_back(static_cast<TLeaf*>(leaf));
         }
     }
+
+    if (m_trees.size() == 1) {
+        // Open obvious TTree
+        m_active_tree = m_trees.front();
+    }
 }
 
-void FileBrowser::printFiles(int x, int y) {
-    // mvwprintw(dir_window, x, y, ""); // TODO print tree
-    int dir_size = getmaxy(dir_window);
+void FileBrowser::printFiles() {
+    int x = getbegx(dir_window) + 1;
+    int y = getbegy(dir_window) + 1;
 
-    for (size_t i = 0; i < std::min<int>(dir_size-3, m_leaves.size()); ++i) {
-        auto name = m_leaves[i]->GetName();
-        if (selected_pos == i) {
+    int entry = 0;
+    auto print_tree_name = [this, &entry](const TTree* tree, int aty, int atx){
+        if (entry == selected_pos) {
             attron(A_REVERSE);
             attron(A_ITALIC);
-            mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
-            attroff(A_ITALIC);
+        }
+        mvprintw(aty, atx, " %.18s", tree->GetName()); // TODO print tree
+        if (entry == selected_pos) {
             attroff(A_REVERSE);
+            attroff(A_ITALIC);
         }
-        else {
-            mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
-        }
+        entry++;
+    };
+
+    for (const auto* tree : m_trees) {
+        print_tree_name(tree, y + entry, x);
     }
+
+    //mvwprintw(dir_window, y, x, ""); // TODO print tree
+    //int dir_size = getmaxy(dir_window);
+    //
+    //for (int i = 0; i < std::min<int>(dir_size-3, m_leaves.size()); ++i) {
+    //    if (selected_pos == i) {
+    //        attron(A_REVERSE);
+    //        attron(A_ITALIC);
+    //        mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
+    //        attroff(A_ITALIC);
+    //        attroff(A_REVERSE);
+    //    }
+    //    else {
+    //        mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
+    //    }
+    //}
+    
     box(dir_window, 0, 0);
     wrefresh(dir_window);
 }

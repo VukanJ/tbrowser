@@ -14,14 +14,16 @@ public:
     FileBrowser();
     ~FileBrowser();
     void loadFile(std::string filename);
-    void printFiles(int x, int y);
+    void printFiles();
 
-    void handleInputEvent(MEVENT& evt, int);
+    void handleInputEvent(MEVENT& mouse, int key);
     void handleResize();
     void plotHistogram();
 
 private:
+    static void init_ncurses();
     static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y);
+
     void handleMouseClick(int y, int x);
     void selection_down();
     void selection_up();
@@ -30,7 +32,6 @@ private:
     void toggleKeyBindings();
     void toggleStatsBox();
     void toggleLogy();
-    static void init_ncurses();
     void printKeyBindings(int y, int x);
     void plotHistogram(TTree*, TLeaf*);
     void plotAxes(double, double, double, double, int, int, int, int);
@@ -45,6 +46,8 @@ private:
     std::unique_ptr<TFile> m_tfile;
     std::string m_filename;
     std::vector<TTree*> m_trees;
+    std::vector<TDirectory*> m_directories;
+    TTree* m_active_tree = nullptr;
     std::vector<TLeaf*> m_leaves;
     std::vector<TH1D*> m_histos;
     int mainwin_x;
@@ -56,6 +59,17 @@ private:
 
     int terminal_size_y;
     int terminal_size_x;
+
+    struct DirectoryStructure {
+        struct Node {
+            enum NodeType {ROOT, FOLDER, TTREE, LEAF, HIST};
+            Node() : type(ROOT), index(-1) { }
+            Node(NodeType nt, size_t idx) : type(nt), index(idx) { }
+            NodeType type;
+            size_t index = -1;
+            std::vector<Node> nodes;
+        } root;
+    } directory;
 };
 
 #endif // BROWSER_H
