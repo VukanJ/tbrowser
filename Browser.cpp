@@ -47,15 +47,16 @@ volatile bool resize_flag = false;
 
 FileBrowser::FileBrowser() {
     init_ncurses();
-    int sizex;
-    int sizey;
-    getmaxyx(stdscr, sizey, sizex);
+    int sizex = getmaxx(stdscr);
+    int sizey = getmaxy(stdscr);;
     createWindow(main_window, sizey - 6, sizex - 20, 20, 0);
     createWindow(dir_window, sizey - 6, 20, 0, 0);
 
     refresh();
     box(main_window, 0, 0);
     wrefresh(main_window);
+
+    getmaxyx(stdscr, terminal_size_y, terminal_size_x);
 }
 
 FileBrowser::~FileBrowser() {
@@ -72,7 +73,7 @@ void FileBrowser::init_ncurses() {
     cbreak();
     keypad(stdscr, TRUE);
     curs_set(0);
-    halfdelay(20);
+    // halfdelay(20);
     signal(SIGWINCH, [](int signum) { resize_flag = true; });
 
     mouseinterval(0);
@@ -82,7 +83,6 @@ void FileBrowser::init_ncurses() {
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
     init_pair(3, COLOR_GREEN, COLOR_BLACK);
-
 }
 
 void FileBrowser::loadFile(std::string filename) {
@@ -115,7 +115,6 @@ void FileBrowser::loadFile(std::string filename) {
 
 void FileBrowser::printFiles(int x, int y) {
     // mvwprintw(dir_window, x, y, ""); // TODO print tree
-    
     int dir_size = getmaxy(dir_window);
 
     for (size_t i = 0; i < std::min<int>(dir_size-3, m_leaves.size()); ++i) {
@@ -168,20 +167,12 @@ void FileBrowser::plotHistogram() {
 }
 
 void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
-    int debug = 1;
     // Get window position and size
     int wx = 0;
     int wy = 0;
     getbegyx(main_window, wy, wx);
     getmaxyx(main_window, mainwin_y, mainwin_x);
-    wclear(main_window);
     box(main_window, 0, 0);
-
-    attron(A_BLINK);
-    mvprintw(wy + mainwin_y / 2, wx + mainwin_x / 2, "Please Wait...");
-    attroff(A_BLINK);
-    wrefresh(main_window);
-    refresh();
 
     // Get bounds
     const char* leafname = leaf->GetName();
@@ -274,7 +265,6 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
 
     plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
-    wrefresh(main_window);
     refresh();
 
 }
@@ -381,13 +371,18 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 
 void FileBrowser::handleResize() {
     resize_flag = false;
-    endwin();
-    refresh();
-    int sizex;
-    int sizey;
+    int sizex = getmaxx(stdscr);
+    int sizey = getmaxy(stdscr);;
     getmaxyx(stdscr, sizey, sizex);
-    createWindow(main_window, sizey - 6, sizex - 20, 20, 0);
-    createWindow(dir_window, sizey - 6, 20, 0, 0);
+    // !!! May be false positive, check
+    if (sizex != terminal_size_x || sizey != terminal_size_y) {
+        terminal_size_x = sizex;
+        terminal_size_y = sizey;
+        endwin();
+        refresh();
+        createWindow(main_window, terminal_size_y - 6, terminal_size_x - 20, 20, 0);
+        createWindow(dir_window, terminal_size_y - 6, 20, 0, 0);
+    }
 }
 
 void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y) {

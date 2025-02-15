@@ -53,6 +53,9 @@ private:
     bool showkeys = false;
     bool showstats = true;
     bool logscale = false;
+
+    int terminal_size_y;
+    int terminal_size_x;
 };
 
 #endif // BROWSER_H
