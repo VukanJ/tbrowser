@@ -19,8 +19,9 @@ int main (int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    FileBrowser browser;
-    browser.populate("build/Pb_proton_1000MeV_20mm_merged.root");
+    FileBrowser b;
+    b.loadFile("./build/B2psi2SKS_All_pre_B_bdtsel_sw_ft.root");
+    return EXIT_SUCCESS;
 #else
     if (argc == 2) {
         if (std::filesystem::exists(argv[1])) {

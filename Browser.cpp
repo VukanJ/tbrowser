@@ -57,10 +57,13 @@ FileBrowser::FileBrowser() {
     wrefresh(main_window);
 
     getmaxyx(stdscr, terminal_size_y, terminal_size_x);
-    directory.root.type = DirectoryStructure::Node::NodeType::ROOT;
 }
 
 FileBrowser::~FileBrowser() {
+    if (m_tfile->IsOpen()) {
+        m_tfile->Close();
+    }
+
     delwin(main_window);
     delwin(dir_window);
     endwin();
@@ -88,39 +91,8 @@ void FileBrowser::init_ncurses() {
 
 
 void FileBrowser::loadFile(std::string filename) {
-    // Get Pointers to directories, trees, and histograms
-    m_filename = filename;
-    m_tfile = std::unique_ptr<TFile>(TFile::Open(m_filename.c_str(), "READ"));
-    if (!m_tfile || m_tfile->IsZombie()) {
-        std::cerr << "File cannot be opened\n";
-        exit(EXIT_FAILURE);
-    }
-
-    DirectoryStructure::Node* node = &directory.root;
-
-    for (auto* KEY : *m_tfile->GetListOfKeys()) {
-        TKey* key = (TKey*)KEY;
-        if (strcmp(key->GetClassName(), "TTree") == 0) {
-            m_trees.push_back(static_cast<TTree*>(key->ReadObj()));
-            node->nodes.emplace_back(DirectoryStructure::Node::NodeType::TTREE, m_trees.size() - 1);
-        }
-        else if (strcmp(key->GetClassName(), "TH1D") == 0) {
-            m_histos.push_back(static_cast<TH1D*>(key->ReadObj()));
-        }
-        else if (strcmp(key->GetClassName(), "TH2D") == 0) {
-        }
-    }
-    // Read branch names
-    for (TTree* tree : m_trees) {
-        for (auto leaf : *tree->GetListOfLeaves()) {
-            m_leaves.push_back(static_cast<TLeaf*>(leaf));
-        }
-    }
-
-    if (m_trees.size() == 1) {
-        // Open obvious TTree
-        m_active_tree = m_trees.front();
-    }
+    debug_traverse(filename);
+    root_file.updateDisplayList();
 }
 
 void FileBrowser::printFiles() {
@@ -128,12 +100,20 @@ void FileBrowser::printFiles() {
     int y = getbegy(dir_window) + 1;
 
     int entry = 0;
-    auto print_tree_name = [this, &entry](const TTree* tree, int aty, int atx){
+    auto print_entry = [this, &entry, y, x](NodeType type, const std::string name){
+        std::string entry_label;
+        switch (type) {
+            case NodeType::DIRECTORY: entry_label = " " + name; break;
+            case NodeType::LEAF:      entry_label = " " + name; break;
+            case NodeType::TTREE:     entry_label = " " + name; break;
+            case NodeType::HIST:      entry_label = " " + name; break;
+            case NodeType::UNKNOWN:   entry_label = "? " + name; break;
+        }
         if (entry == selected_pos) {
             attron(A_REVERSE);
             attron(A_ITALIC);
         }
-        mvprintw(aty, atx, " %.18s", tree->GetName()); // TODO print tree
+        mvprintw(y + entry, x, "%.20s", entry_label.c_str());
         if (entry == selected_pos) {
             attroff(A_REVERSE);
             attroff(A_ITALIC);
@@ -141,26 +121,10 @@ void FileBrowser::printFiles() {
         entry++;
     };
 
-    for (const auto* tree : m_trees) {
-        print_tree_name(tree, y + entry, x);
+    for (const auto& [type, name, _] : root_file.displayList) {
+        print_entry(type, name);
     }
 
-    //mvwprintw(dir_window, y, x, ""); // TODO print tree
-    //int dir_size = getmaxy(dir_window);
-    //
-    //for (int i = 0; i < std::min<int>(dir_size-3, m_leaves.size()); ++i) {
-    //    if (selected_pos == i) {
-    //        attron(A_REVERSE);
-    //        attron(A_ITALIC);
-    //        mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
-    //        attroff(A_ITALIC);
-    //        attroff(A_REVERSE);
-    //    }
-    //    else {
-    //        mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
-    //    }
-    //}
-    
     box(dir_window, 0, 0);
     wrefresh(dir_window);
 }
@@ -194,7 +158,7 @@ void FileBrowser::toggleLogy() {
 } 
 
 void FileBrowser::plotHistogram() {
-    plotHistogram(*m_trees.begin(), m_leaves.at(selected_pos));
+    plotHistogram(m_active_tree, m_leaves.at(selected_pos));
 }
 
 void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
@@ -343,6 +307,49 @@ void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax,
     }
 }
 
+void FileBrowser::debug_listdir(TDirectory* dir, RootFile::Node* node) {
+    TList* keys = dir->GetListOfKeys();
+    if (!keys) return;
+
+    for (int i = 0; i < keys->GetSize(); ++i) {
+        TKey* key = (TKey*)keys->At(i);
+        TObject* obj = key->ReadObj();
+
+        if (strcmp(key->GetClassName(), "TTree") == 0) {
+            root_file.m_trees.push_back(dynamic_cast<TTree*>(obj));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TTREE, root_file.m_trees.size() - 1));
+        }
+        else if (strcmp(key->GetClassName(), "TH1D") == 0) {
+            root_file.m_histos_th1d.push_back(dynamic_cast<TH1D*>(obj));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::HIST, root_file.m_histos_th1d.size() - 1));
+        }
+        else if (obj->IsA()->InheritsFrom(TDirectory::Class())) {
+            root_file.m_directories.push_back(dynamic_cast<TDirectory*>(obj));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::DIRECTORY, root_file.m_directories.size() - 1));
+            debug_listdir((TDirectory*)obj, node->nodes.back().get());
+        }
+        else {
+            node->nodes.emplace_back();
+        }
+    }
+}
+
+void FileBrowser::debug_traverse(std::string& filename) {
+    m_tfile = std::unique_ptr<TFile>(TFile::Open(filename.c_str(), "READ"));
+    if (!m_tfile || m_tfile->IsZombie()) {
+        return;
+    }
+
+    root_file.m_directories.push_back(m_tfile.get());
+    root_file.root_node.index = 0;
+    root_file.root_node.type = NodeType::DIRECTORY;
+    debug_listdir(m_tfile.get(), &root_file.root_node);
+
+    if (root_file.m_trees.size() > 0) {
+        m_active_tree = root_file.m_trees.back();
+    }
+}
+
 void FileBrowser::handleMouseClick(int y, int x) {
     // Is inside window?
     int posy, posx;
@@ -350,7 +357,7 @@ void FileBrowser::handleMouseClick(int y, int x) {
     getmaxyx(dir_window, sizey, sizex);
     getbegyx(dir_window, posy, posx);
     if (x > posx && x < posx + sizex - 1 && y > posy && y < posy + sizey - 1) {
-        selected_pos = y - posy - 2;
+        selected_pos = y - posy - 1;
     }
 }
 
@@ -431,4 +438,29 @@ void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, 
     refresh();
     box(win, 0, 0);
     wrefresh(win);
+}
+
+void FileBrowser::RootFile::updateDisplayList(Node* mothernode, std::string prefix) {
+    for (auto& node : mothernode->nodes) {
+        switch (node->type) {
+            case NodeType::DIRECTORY:
+                displayList.emplace_back(node->type, m_directories[node->index]->GetName(), node.get());
+                updateDisplayList(node.get(), prefix + " ");
+                break;
+            case NodeType::TTREE:
+                displayList.emplace_back(node->type, m_trees[node->index]->GetName(), node.get());
+                break;
+            case NodeType::HIST:
+                displayList.emplace_back(node->type, m_histos_th1d[node->index]->GetName(), node.get());
+                break;
+            default: break;
+        }
+    }
+}
+
+void FileBrowser::RootFile::updateDisplayList() {
+    // Make flat file structure list for quick redraw
+    displayList.clear();
+    displayList.emplace_back(root_node.type, m_directories[root_node.index]->GetName(), &root_node);
+    updateDisplayList(&root_node, "");
 }
