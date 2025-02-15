@@ -1,4 +1,5 @@
 #include "Browser.h"
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <algorithm>
@@ -17,6 +18,7 @@ enum ASCII : std::uint8_t {
     FULL_BLOCK,
     VOID,
 };
+
 enum ASCII_code : std::uint8_t {
     C_LOWER_LEFT   = 0b1000,
     C_LOWER_RIGHT  = 0b0100,
@@ -43,11 +45,47 @@ std::unordered_map<ASCII_code, ASCII> ascii_map = {
 
 volatile bool resize_flag = false;
 
-FileBrowser::FileBrowser(WINDOW*& dir_win) : dir_window(dir_win) { }
+FileBrowser::FileBrowser() {
+    init_ncurses();
+    int sizex;
+    int sizey;
+    getmaxyx(stdscr, sizey, sizex);
+    createWindow(main_window, sizey - 6, sizex - 20, 20, 0);
+    createWindow(dir_window, sizey - 6, 20, 0, 0);
 
-FileBrowser::~FileBrowser() { }
+    refresh();
+    box(main_window, 0, 0);
+    wrefresh(main_window);
+}
 
-void FileBrowser::loadfile(std::string filename) {
+FileBrowser::~FileBrowser() {
+    delwin(main_window);
+    delwin(dir_window);
+    endwin();
+}
+
+void FileBrowser::init_ncurses() {
+    // Init NCURSES
+    setlocale(LC_ALL, "");
+    initscr();
+    noecho();
+    cbreak();
+    keypad(stdscr, TRUE);
+    curs_set(0);
+    halfdelay(20);
+    signal(SIGWINCH, [](int signum) { resize_flag = true; });
+
+    mouseinterval(0);
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
+
+    start_color();
+    init_pair(1, COLOR_BLUE, COLOR_BLACK);
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);
+
+}
+
+void FileBrowser::loadFile(std::string filename) {
     // Get Pointers to directories, trees, and histograms
     m_filename = filename;
     m_tfile = std::unique_ptr<TFile>(TFile::Open(m_filename.c_str(), "READ"));
@@ -75,7 +113,7 @@ void FileBrowser::loadfile(std::string filename) {
     }
 }
 
-void FileBrowser::printFiles(int lines, int cols, int x, int y) {
+void FileBrowser::printFiles(int x, int y) {
     // mvwprintw(dir_window, x, y, ""); // TODO print tree
     
     int dir_size = getmaxy(dir_window);
@@ -125,24 +163,24 @@ void FileBrowser::toggleLogy() {
     logscale = !logscale; 
 } 
 
-void FileBrowser::plotHistogram(WINDOW*& win) {
-    plotHistogram(win, *m_trees.begin(), m_leaves.at(selected_pos));
+void FileBrowser::plotHistogram() {
+    plotHistogram(*m_trees.begin(), m_leaves.at(selected_pos));
 }
 
-void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
+void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     int debug = 1;
     // Get window position and size
     int wx = 0;
     int wy = 0;
-    getbegyx(win, wy, wx);
-    getmaxyx(win, mainwin_y, mainwin_x);
-    wclear(win);
-    box(win, 0, 0);
+    getbegyx(main_window, wy, wx);
+    getmaxyx(main_window, mainwin_y, mainwin_x);
+    wclear(main_window);
+    box(main_window, 0, 0);
 
     attron(A_BLINK);
     mvprintw(wy + mainwin_y / 2, wx + mainwin_x / 2, "Please Wait...");
     attroff(A_BLINK);
-    wrefresh(win);
+    wrefresh(main_window);
     refresh();
 
     // Get bounds
@@ -235,8 +273,8 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     mvprintw(wy + mainwin_y + 1, wx + 11, ")");
 
     plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
-    box(win, 0, 0);
-    wrefresh(win);
+    box(main_window, 0, 0);
+    wrefresh(main_window);
     refresh();
 
 }
@@ -292,7 +330,7 @@ void FileBrowser::handleMouseClick(int y, int x) {
     }
 }
 
-void FileBrowser::handleKeyPress(WINDOW*& win, MEVENT& mouse_event, int key) {
+void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
     switch (key) {
         case KEY_DOWN:
             selection_down();
@@ -311,18 +349,18 @@ void FileBrowser::handleKeyPress(WINDOW*& win, MEVENT& mouse_event, int key) {
             break;
         case 'p':
             toggleKeyBindings();
-            plotHistogram(win);
+            plotHistogram();
             break;
         case 's':
             toggleStatsBox();
-            plotHistogram(win);
+            plotHistogram();
             break;
         case 'l':
             toggleLogy();
-            plotHistogram(win);
+            plotHistogram();
             break;
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
-            plotHistogram(win);
+            plotHistogram();
             resize_flag = true;
             break;
         case KEY_MOUSE:
@@ -331,14 +369,33 @@ void FileBrowser::handleKeyPress(WINDOW*& win, MEVENT& mouse_event, int key) {
                     handleMouseClick(mouse_event.y, mouse_event.x);
                 }
                 else if (mouse_event.bstate == BUTTON4_PRESSED) {
-                    // Scroll down once
                     selection_up();
                 }
                 else if (mouse_event.bstate == BUTTON5_PRESSED) {
-                    // Scroll up once
                     selection_down();
                 }
             }
             break;
     }
+}
+
+void FileBrowser::handleResize() {
+    resize_flag = false;
+    endwin();
+    refresh();
+    int sizex;
+    int sizey;
+    getmaxyx(stdscr, sizey, sizex);
+    createWindow(main_window, sizey - 6, sizex - 20, 20, 0);
+    createWindow(dir_window, sizey - 6, 20, 0, 0);
+}
+
+void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y) {
+    if (win) {
+        delwin(win);
+    }
+    win = newwin(size_y, size_x, pos_y, pos_x);
+    refresh();
+    box(win, 0, 0);
+    wrefresh(win);
 }
