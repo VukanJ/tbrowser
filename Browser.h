@@ -2,6 +2,7 @@
 #define BROWSER_H
 
 #include <ncurses.h>
+#include <optional>
 
 #include "TFile.h"
 #include "TTree.h"
@@ -14,15 +15,20 @@ public:
     FileBrowser();
     ~FileBrowser();
     void loadFile(std::string filename);
-    void printFiles();
+    void printDirectories();
 
     void handleInputEvent(MEVENT& mouse, int key);
     void handleResize();
     void plotHistogram();
 
 private:
+    enum color {
+        blue=1, green, red, white, yellow
+    };
     static void init_ncurses();
     static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y);
+
+    void handleMenuSelect();
 
     void handleMouseClick(int y, int x);
     void selection_down();
@@ -62,9 +68,14 @@ private:
         struct Node {
             Node() : type(NodeType::UNKNOWN), index(-1) { }
             Node(NodeType nt, int idx) : type(nt), index(idx) { }
+            Node(NodeType nt, int idx, Node* mot) : type(nt), index(idx), mother(mot) { }
             NodeType type;
             int index = -1; // Logical pointer to storage
+            Node* mother = nullptr; // Containing directory
             std::vector<std::unique_ptr<Node>> nodes;
+
+            bool displayInMenu();
+            bool directory_open = true;  // By default, open all directories
         } root_node;
 
         std::vector<TDirectory*> m_directories;
@@ -74,6 +85,8 @@ private:
         using MenuItem = std::tuple<NodeType, std::string, Node*>;
         void updateDisplayList(Node*, std::string prefix);
         void updateDisplayList();
+        std::optional<MenuItem> getEntry(int);
+        int menuLength();
         std::vector<MenuItem> displayList;
 
     } root_file;

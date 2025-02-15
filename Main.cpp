@@ -1,10 +1,6 @@
-#include <algorithm>
 #include <clocale>
-#include <cstdint>
-#include <functional>
 #include <iostream>
 #include <filesystem>
-#include <iterator>
 #include <string>
 #include <csignal>
 
@@ -47,7 +43,7 @@ int main (int argc, char* argv[]) {
     MEVENT mouse_event;
 
     while (running) {
-        browser.printFiles();
+        browser.printDirectories();
 
         int input = getch();
         
