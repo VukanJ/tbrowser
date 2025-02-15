@@ -22,8 +22,10 @@ public:
     void toggleKeyBindings();
     void toggleStatsBox();
     void toggleLogy();
-    void handleMouseClick(int y, int x);
     void plotHistogram(WINDOW*& win);
+
+    void handleMouseClick(int y, int x);
+    void handleKeyPress(WINDOW*&, MEVENT& evt, int);
 private:
     void printKeyBindings(int y, int x);
     void plotHistogram(WINDOW*& win, TTree*, TLeaf*);

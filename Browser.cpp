@@ -291,3 +291,54 @@ void FileBrowser::handleMouseClick(int y, int x) {
         selected_pos = y - posy - 2;
     }
 }
+
+void FileBrowser::handleKeyPress(WINDOW*& win, MEVENT& mouse_event, int key) {
+    switch (key) {
+        case KEY_DOWN:
+            selection_down();
+            break;
+        case KEY_UP:
+            selection_up();
+            break;
+        case 'g':
+            goTop();
+            break;
+        case 'G':
+            goBottom();
+            break;
+        case '/':
+            mvprintw(30, 30, "SEARCH");
+            break;
+        case 'p':
+            toggleKeyBindings();
+            plotHistogram(win);
+            break;
+        case 's':
+            toggleStatsBox();
+            plotHistogram(win);
+            break;
+        case 'l':
+            toggleLogy();
+            plotHistogram(win);
+            break;
+        case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
+            plotHistogram(win);
+            resize_flag = true;
+            break;
+        case KEY_MOUSE:
+            if (getmouse(&mouse_event) == OK) {
+                if (mouse_event.bstate == BUTTON1_PRESSED) {
+                    handleMouseClick(mouse_event.y, mouse_event.x);
+                }
+                else if (mouse_event.bstate == BUTTON4_PRESSED) {
+                    // Scroll down once
+                    selection_up();
+                }
+                else if (mouse_event.bstate == BUTTON5_PRESSED) {
+                    // Scroll up once
+                    selection_down();
+                }
+            }
+            break;
+    }
+}

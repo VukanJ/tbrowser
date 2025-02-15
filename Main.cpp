@@ -107,65 +107,11 @@ int main (int argc, char* argv[]) {
             createWindow(dir_window, sizey - WINSIZE_BOTTOM, WIDTH_MENU_CURRENT, 0, 0);
         }
 
-        switch (input) {
-            case 'q': case 27:
-                running = false;
-                break;
-            case KEY_MOUSE:
-                if (getmouse(&mouse_event) == OK) {
-                    if (mouse_event.bstate == BUTTON1_PRESSED) {
-                        browser.handleMouseClick(mouse_event.y, mouse_event.x);
-                    }
-                    else if (mouse_event.bstate == BUTTON4_PRESSED) {
-                        // Scroll down once
-                        browser.selection_up();
-                    }
-                    else if (mouse_event.bstate == BUTTON5_PRESSED) {
-                        // Scroll up once
-                        browser.selection_down();
-                    }
-                }
-                break;
-            case KEY_DOWN:
-                browser.selection_down();
-                break;
-            case KEY_UP:
-                browser.selection_up();
-                break;
-            case 'g':
-                browser.goTop();
-                break;
-            case 'G':
-                browser.goBottom();
-                break;
-            case '/':
-                mvprintw(30, 30, "SEARCH");
-                break;
-            case 'p':
-                browser.toggleKeyBindings();
-                browser.plotHistogram(mainwindow);
-                break;
-            case 's':
-                browser.toggleStatsBox();
-                browser.plotHistogram(mainwindow);
-                break;
-            case 'l':
-                browser.toggleLogy();
-                browser.plotHistogram(mainwindow);
-                break;
-            case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
-                browser.plotHistogram(mainwindow);
-                break;
-            case 9: // Tab
-                if (WIDTH_MENU_CURRENT == WIDTH_MENU_DEFAULT) {
-                    WIDTH_MENU_CURRENT = WIDTH_MENU_ENLARGE;
-                }
-                else if (WIDTH_MENU_CURRENT == WIDTH_MENU_ENLARGE) {
-                    WIDTH_MENU_CURRENT = WIDTH_MENU_DEFAULT;
-                }
-                browser.plotHistogram(mainwindow);
-                resize_flag = true;
-                break;
+        if (input == 'q') {
+            running = false;
+        }
+        else {
+            browser.handleKeyPress(mainwindow, mouse_event, input);
         }
     }
 
