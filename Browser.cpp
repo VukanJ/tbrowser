@@ -211,10 +211,10 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
         for (int y = 0; y < bins_y / 2; ++y) {
             // Check if ascii character is filled
             std::uint8_t probe = ASCII_code::C_VOID;
-            probe |= ((2*y - 0.5)* pixel_y <= cl) << 3;
-            probe |= ((2*y - 0.5)* pixel_y <= cr) << 2;
-            probe |= ((2*y + 0.5) * pixel_y <= cl) << 1;
-            probe |= ((2*y + 0.5) * pixel_y <= cr);
+            probe |= ((2*y + 0) * pixel_y < cl) << 3;
+            probe |= ((2*y + 0) * pixel_y < cr) << 2;
+            probe |= ((2*y + 1) * pixel_y < cl) << 1;
+            probe |= ((2*y + 1) * pixel_y < cr);
             if (probe == ASCII_code::C_VOID) {
                 // fill rest with blanks, prevents overdraw...
                 for (int f = y; f < bins_y / 2; ++f) {
@@ -237,14 +237,18 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     // Various annotations
 
     // Plot Title
-    attron(A_BOLD);
+    box(main_window, 0, 0);
+    wrefresh(main_window);
+    attron(A_ITALIC);
+    attron(A_UNDERLINE);
     if (logscale) {
         mvprintw(0, wx+2, "┤ log(%s) ├", leaf->GetTitle());
     }
     else {
         mvprintw(0, wx+2, "┤ %s ├", leaf->GetTitle());
     }
-    attroff(A_BOLD);
+    attroff(A_UNDERLINE);
+    attroff(A_ITALIC);
 
     // Plot stats
     int line = 1;
@@ -264,7 +268,6 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     mvprintw(wy + mainwin_y + 1, wx + 11, ")");
 
     plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
-    box(main_window, 0, 0);
     refresh();
 
 }
@@ -372,16 +375,20 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 void FileBrowser::handleResize() {
     resize_flag = false;
     int sizex = getmaxx(stdscr);
-    int sizey = getmaxy(stdscr);;
+    int sizey = getmaxy(stdscr);
     getmaxyx(stdscr, sizey, sizex);
     // !!! May be false positive, check
     if (sizex != terminal_size_x || sizey != terminal_size_y) {
+        // mvprintw(getmaxy(dir_window), 0, "RESIZE %i,%i", sizey, sizex);
         terminal_size_x = sizex;
         terminal_size_y = sizey;
         endwin();
         refresh();
         createWindow(main_window, terminal_size_y - 6, terminal_size_x - 20, 20, 0);
         createWindow(dir_window, terminal_size_y - 6, 20, 0, 0);
+    }
+    else {
+        // mvprintw(getmaxy(dir_window), 0, " FAKERESIZE %i,%i", sizey, sizex);
     }
 }
 

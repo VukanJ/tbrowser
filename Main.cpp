@@ -50,7 +50,7 @@ int main (int argc, char* argv[]) {
 
         int input = getch();
         
-        mvprintw(0, 0, std::to_string(nredraws++).c_str());
+        // mvprintw(0, 0, std::to_string(nredraws++).c_str());
         if (resize_flag) {
             browser.handleResize();
         }
