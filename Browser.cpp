@@ -47,7 +47,7 @@ FileBrowser::FileBrowser(WINDOW*& dir_win) : dir_window(dir_win) { }
 
 FileBrowser::~FileBrowser() { }
 
-void FileBrowser::populate(std::string filename) {
+void FileBrowser::loadfile(std::string filename) {
     // Get Pointers to directories, trees, and histograms
     m_filename = filename;
     m_tfile = std::unique_ptr<TFile>(TFile::Open(m_filename.c_str(), "READ"));
@@ -96,6 +96,34 @@ void FileBrowser::printFiles(int lines, int cols, int x, int y) {
     box(dir_window, 0, 0);
     wrefresh(dir_window);
 }
+
+void FileBrowser::selection_down() {
+    selected_pos = std::min<int>(getmaxy(dir_window) - 4, selected_pos + 1); 
+}
+
+void FileBrowser::selection_up() {
+    selected_pos = std::max<int>(0, selected_pos - 1); 
+}
+
+void FileBrowser::goTop() {
+    selected_pos = 0; 
+}
+
+void FileBrowser::goBottom() {
+    selected_pos = m_leaves.size() - 1; 
+}
+
+void FileBrowser::toggleKeyBindings() {
+    showkeys = !showkeys; 
+}
+
+void FileBrowser::toggleStatsBox() {
+    showstats = !showstats; 
+} 
+
+void FileBrowser::toggleLogy() {
+    logscale = !logscale; 
+} 
 
 void FileBrowser::plotHistogram(WINDOW*& win) {
     plotHistogram(win, *m_trees.begin(), m_leaves.at(selected_pos));

@@ -13,21 +13,17 @@ class FileBrowser final {
 public:
     FileBrowser(WINDOW*& directory_window);
     ~FileBrowser();
-    void populate(std::string filename);
-    void make_window();
-
+    void loadfile(std::string filename);
     void printFiles(int lines, int cols, int x, int y);
-
-    void select_down() { selected_pos++; }
-    void select_up() { selected_pos--; }
-    void goTop() { selected_pos = 0; }
-    void goBottom() { selected_pos = m_leaves.size() - 1; }
-    void toggleKeyBindings() { showkeys = !showkeys; }
-    void toggleStatsBox() { showstats = !showstats; } 
-    void toggleLogy() { logscale = !logscale; } 
-    void plotHistogram(WINDOW*& win);
-
+    void selection_down();
+    void selection_up();
+    void goTop();
+    void goBottom();
+    void toggleKeyBindings();
+    void toggleStatsBox();
+    void toggleLogy();
     void handleMouseClick(int y, int x);
+    void plotHistogram(WINDOW*& win);
 private:
     void printKeyBindings(int y, int x);
     void plotHistogram(WINDOW*& win, TTree*, TLeaf*);
@@ -46,7 +42,7 @@ private:
     std::vector<TH1D*> m_histos;
     int mainwin_x;
     int mainwin_y;
-    int selected_pos = 3;
+    int selected_pos = 0;
     bool showkeys = false;
     bool showstats = true;
     bool logscale = false;

@@ -87,7 +87,7 @@ int main (int argc, char* argv[]) {
     int nredraws = 0;
 
     FileBrowser browser(dir_window);
-    browser.populate(filename.c_str());
+    browser.loadfile(filename.c_str());
 
     int last_mouse_event = 0;
     MEVENT mouse_event;
@@ -118,19 +118,19 @@ int main (int argc, char* argv[]) {
                     }
                     else if (mouse_event.bstate == BUTTON4_PRESSED) {
                         // Scroll down once
-                        browser.select_up();
+                        browser.selection_up();
                     }
                     else if (mouse_event.bstate == BUTTON5_PRESSED) {
                         // Scroll up once
-                        browser.select_down();
+                        browser.selection_down();
                     }
                 }
                 break;
             case KEY_DOWN:
-                browser.select_down();
+                browser.selection_down();
                 break;
             case KEY_UP:
-                browser.select_up();
+                browser.selection_up();
                 break;
             case 'g':
                 browser.goTop();
