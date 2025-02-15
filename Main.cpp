@@ -16,6 +16,9 @@
 int resize_signal = SIGWINCH;
 extern bool resize_flag;
 
+constexpr int SIZE_CMD = 6;
+constexpr int SIZE_MENU = 20;
+
 
 void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y) {
     if (win) {
@@ -29,14 +32,14 @@ void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y) {
 
 
 int main (int argc, char* argv[]) {
+    std::string filename;
 #ifdef DEBUG
     FileBrowser browser;
     browser.populate("build/Pb_proton_1000MeV_20mm_merged.root");
 #else
-    FileBrowser browser;
     if (argc == 2) {
         if (std::filesystem::exists(argv[1])) {
-            browser.populate(argv[1]);
+            filename = argv[1];
         }
         else {
             std::cerr << "File not found" << std::endl;
@@ -70,20 +73,23 @@ int main (int argc, char* argv[]) {
     // Initial window setup
     WINDOW* mainwindow = nullptr;
     WINDOW* dir_window = nullptr;
-    createWindow(mainwindow, sizey - 4, sizex - 20, 20, 0);
-    createWindow(dir_window, sizey - 4, 20, 0, 0);
+    createWindow(mainwindow, sizey - SIZE_CMD, sizex - SIZE_MENU, SIZE_MENU, 0);
+    createWindow(dir_window, sizey - SIZE_CMD, SIZE_MENU, 0, 0);
 
     refresh();
     box(mainwindow, 0, 0);
     wrefresh(mainwindow);
-
     bool running = true;
     int nredraws = 0;
+
+    FileBrowser browser(dir_window);
+    browser.populate(filename.c_str());
 
     while (running) {
         browser.printFiles(sizey, sizex, 1, 1);
 
         int input = getch();
+
         // mvprintw(0, 20, std::to_string(nredraws++).c_str());
         
         if (resize_flag) {
@@ -91,8 +97,8 @@ int main (int argc, char* argv[]) {
             endwin();
             refresh();
             getmaxyx(stdscr, sizey, sizex);
-            createWindow(mainwindow, sizey - 4, sizex - 20, 20, 0);
-            createWindow(dir_window, sizey - 4, 20, 0, 0);
+            createWindow(mainwindow, sizey - SIZE_CMD, sizex - SIZE_MENU, SIZE_MENU, 0);
+            createWindow(dir_window, sizey - SIZE_CMD, SIZE_MENU, 0, 0);
         }
 
         // mvprintw(30, 30, std::to_string((int)input).c_str());
@@ -117,9 +123,15 @@ int main (int argc, char* argv[]) {
                 break;
             case 'p':
                 browser.toggleKeyBindings();
+                browser.plotHistogram(mainwindow);
                 break;
             case 's':
                 browser.toggleStatsBox();
+                browser.plotHistogram(mainwindow);
+                break;
+            case 'l':
+                browser.toggleLogy();
+                browser.plotHistogram(mainwindow);
                 break;
             case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
                 browser.plotHistogram(mainwindow);

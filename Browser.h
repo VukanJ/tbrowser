@@ -11,7 +11,7 @@
 
 class FileBrowser final {
 public:
-    FileBrowser();
+    FileBrowser(WINDOW*& directory_window);
     ~FileBrowser();
     void populate(std::string filename);
     void make_window();
@@ -23,9 +23,8 @@ public:
     void goTop() { selected = 0; }
     void goBottom() { selected = m_leaves.size() - 1; }
     void toggleKeyBindings() { showkeys = !showkeys; }
-    void toggleStatsBox() { 
-        showstats = !showstats; 
-    } 
+    void toggleStatsBox() { showstats = !showstats; } 
+    void toggleLogy() { logscale = !logscale; } 
     void plotHistogram(WINDOW*& win);
 
 private:
@@ -49,6 +48,7 @@ private:
     int selected = 3;
     bool showkeys = false;
     bool showstats = true;
+    bool logscale = false;
 };
 
 #endif // BROWSER_H

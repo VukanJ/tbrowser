@@ -1,11 +1,8 @@
 #include "Browser.h"
-#include "RtypesCore.h"
 #include <iostream>
-#include <format>
 #include <memory>
 #include <algorithm>
 #include <ncurses.h>
-#include <thread>
 #include <string>
 #include <unordered_map>
 
@@ -46,7 +43,7 @@ std::unordered_map<ASCII_code, ASCII> ascii_map = {
 
 volatile bool resize_flag = false;
 
-FileBrowser::FileBrowser() { }
+FileBrowser::FileBrowser(WINDOW*& dir_win) : dir_window(dir_win) { }
 
 FileBrowser::~FileBrowser() { }
 
@@ -80,16 +77,17 @@ void FileBrowser::populate(std::string filename) {
 
 void FileBrowser::printFiles(int lines, int cols, int x, int y) {
     // mvwprintw(dir_window, x, y, ""); // TODO print tree
-    for (size_t i = 0; i < std::min<int>(mainwin_y-9, m_leaves.size()); ++i) {
+    
+    int dir_size = getmaxy(dir_window);
+
+    for (size_t i = 0; i < std::min<int>(dir_size-3, m_leaves.size()); ++i) {
         auto name = m_leaves[i]->GetName();
         if (selected == i) {
-            // attron(A_REVERSE);
+            attron(A_REVERSE);
             attron(A_ITALIC);
-            attron(A_BOLD);
             mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
-            attroff(A_BOLD);
             attroff(A_ITALIC);
-            // attroff(A_REVERSE);
+            attroff(A_REVERSE);
         }
         else {
             mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
@@ -138,12 +136,22 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
 
     double binwidth = (max - min) / bins_x;
     double pixel_y = max_height / bins_y;
-    // Draw ASCII art
+
+    if (logscale) {
+        max_height = log(max_height);
+        max_height += 1.0f;  // order of base magnitude for plotting
+        pixel_y = max_height / bins_y;
+    }
     
+    // Draw ASCII art
     attron(COLOR_PAIR(1));
     for (int x = 0; x < bins_x / 2; x++) {
         auto cl = hist.GetBinContent(2 * x);
         auto cr = hist.GetBinContent(2 * x + 1);
+        if (logscale) {
+            cl = log(cl);
+            cr = log(cr);
+        }
         for (int y = 0; y < bins_y / 2; ++y) {
             // Check if ascii character is filled
             std::uint8_t probe = ASCII_code::C_VOID;
@@ -188,7 +196,7 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
     printKeyBindings(wy + line++, wx + mainwin_x - 30);
 
-    mvprintw(wy + mainwin_y + 1, wx + 1, "Draw(<locked>, , )  ");
+    mvprintw(wy + mainwin_y + 1, wx + 1, "->Draw(<locked>, , )  ");
 
     plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
     box(win, 0, 0);
