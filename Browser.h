@@ -18,15 +18,16 @@ public:
 
     void printFiles(int lines, int cols, int x, int y);
 
-    void select_down() { selected++; }
-    void select_up() { selected--; }
-    void goTop() { selected = 0; }
-    void goBottom() { selected = m_leaves.size() - 1; }
+    void select_down() { selected_pos++; }
+    void select_up() { selected_pos--; }
+    void goTop() { selected_pos = 0; }
+    void goBottom() { selected_pos = m_leaves.size() - 1; }
     void toggleKeyBindings() { showkeys = !showkeys; }
     void toggleStatsBox() { showstats = !showstats; } 
     void toggleLogy() { logscale = !logscale; } 
     void plotHistogram(WINDOW*& win);
 
+    void handleMouseClick(int y, int x);
 private:
     void printKeyBindings(int y, int x);
     void plotHistogram(WINDOW*& win, TTree*, TLeaf*);
@@ -45,7 +46,7 @@ private:
     std::vector<TH1D*> m_histos;
     int mainwin_x;
     int mainwin_y;
-    int selected = 3;
+    int selected_pos = 3;
     bool showkeys = false;
     bool showstats = true;
     bool logscale = false;

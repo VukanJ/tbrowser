@@ -82,7 +82,7 @@ void FileBrowser::printFiles(int lines, int cols, int x, int y) {
 
     for (size_t i = 0; i < std::min<int>(dir_size-3, m_leaves.size()); ++i) {
         auto name = m_leaves[i]->GetName();
-        if (selected == i) {
+        if (selected_pos == i) {
             attron(A_REVERSE);
             attron(A_ITALIC);
             mvprintw(y + i + 1, x, "%.18s", m_leaves[i]->GetName());
@@ -98,7 +98,7 @@ void FileBrowser::printFiles(int lines, int cols, int x, int y) {
 }
 
 void FileBrowser::plotHistogram(WINDOW*& win) {
-    plotHistogram(win, *m_trees.begin(), m_leaves.at(selected));
+    plotHistogram(win, *m_trees.begin(), m_leaves.at(selected_pos));
 }
 
 void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
@@ -138,8 +138,7 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     double pixel_y = max_height / bins_y;
 
     if (logscale) {
-        max_height = log(max_height);
-        max_height += 1.0f;  // order of base magnitude for plotting
+        max_height = log(max_height) + 1.0f;  //+1 order of base magnitude for plotting
         pixel_y = max_height / bins_y;
     }
     
@@ -182,7 +181,12 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
 
     // Plot Title
     attron(A_BOLD);
-    mvprintw(0, wx+2, "┤ %s ├", leaf->GetTitle());
+    if (logscale) {
+        mvprintw(0, wx+2, "┤ log(%s) ├", leaf->GetTitle());
+    }
+    else {
+        mvprintw(0, wx+2, "┤ %s ├", leaf->GetTitle());
+    }
     attroff(A_BOLD);
 
     // Plot stats
@@ -196,7 +200,11 @@ void FileBrowser::plotHistogram(WINDOW*& win, TTree* tree, TLeaf* leaf) {
     mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
     printKeyBindings(wy + line++, wx + mainwin_x - 30);
 
-    mvprintw(wy + mainwin_y + 1, wx + 1, "->Draw(<locked>, , )  ");
+    mvprintw(wy + mainwin_y + 1, wx + 1, "->Draw(");
+    attron(A_REVERSE);
+    mvprintw(wy + mainwin_y + 1, wx + 8, "<d>");
+    attroff(A_REVERSE);
+    mvprintw(wy + mainwin_y + 1, wx + 11, ")");
 
     plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
     box(win, 0, 0);
@@ -212,9 +220,7 @@ void FileBrowser::printKeyBindings(int y, int x) {
         mvprintw(line++, x, "</> Search branch");
         mvprintw(line++, x, "<s> Toggle stats box");
         mvprintw(line++, x, "<d> Enter draw command");
-        mvprintw(line++, x, "<n> Enter entry limit");
         mvprintw(line++, x, "<l> Toggle log y");
-        mvprintw(line++, x, "<L> Toggle log x");
         mvprintw(line++, x, "<g> Go to top");
         mvprintw(line++, x, "<G> Go to bottom");
         mvprintw(line++, x, "<q/Esc> Quit");
@@ -247,3 +253,13 @@ void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax,
     }
 }
 
+void FileBrowser::handleMouseClick(int y, int x) {
+    // Is inside window?
+    int posy, posx;
+    int sizey, sizex;
+    getmaxyx(dir_window, sizey, sizex);
+    getbegyx(dir_window, posy, posx);
+    if (x > posx && x < posx + sizex - 1 && y > posy && y < posy + sizey - 1) {
+        selected_pos = y - posy - 2;
+    }
+}

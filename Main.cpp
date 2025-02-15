@@ -16,9 +16,10 @@
 int resize_signal = SIGWINCH;
 extern bool resize_flag;
 
-constexpr int SIZE_CMD = 6;
-constexpr int SIZE_MENU = 20;
-
+int WINSIZE_BOTTOM = 6;
+int WIDTH_MENU_CURRENT = 20;
+int WIDTH_MENU_DEFAULT = 20;
+int WIDTH_MENU_ENLARGE = 60;
 
 void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y) {
     if (win) {
@@ -61,6 +62,9 @@ int main (int argc, char* argv[]) {
     halfdelay(20);
     signal(resize_signal, [](int signum) { resize_flag = true; });
 
+    mouseinterval(0);
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
+
     start_color();
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
@@ -73,8 +77,8 @@ int main (int argc, char* argv[]) {
     // Initial window setup
     WINDOW* mainwindow = nullptr;
     WINDOW* dir_window = nullptr;
-    createWindow(mainwindow, sizey - SIZE_CMD, sizex - SIZE_MENU, SIZE_MENU, 0);
-    createWindow(dir_window, sizey - SIZE_CMD, SIZE_MENU, 0, 0);
+    createWindow(mainwindow, sizey - WINSIZE_BOTTOM, sizex - WIDTH_MENU_CURRENT, WIDTH_MENU_CURRENT, 0);
+    createWindow(dir_window, sizey - WINSIZE_BOTTOM, WIDTH_MENU_CURRENT, 0, 0);
 
     refresh();
     box(mainwindow, 0, 0);
@@ -85,26 +89,42 @@ int main (int argc, char* argv[]) {
     FileBrowser browser(dir_window);
     browser.populate(filename.c_str());
 
+    int last_mouse_event = 0;
+    MEVENT mouse_event;
+
     while (running) {
         browser.printFiles(sizey, sizex, 1, 1);
 
         int input = getch();
-
-        // mvprintw(0, 20, std::to_string(nredraws++).c_str());
         
+        mvprintw(0, 0, std::to_string(nredraws++).c_str());
         if (resize_flag) {
             resize_flag = false;
             endwin();
             refresh();
             getmaxyx(stdscr, sizey, sizex);
-            createWindow(mainwindow, sizey - SIZE_CMD, sizex - SIZE_MENU, SIZE_MENU, 0);
-            createWindow(dir_window, sizey - SIZE_CMD, SIZE_MENU, 0, 0);
+            createWindow(mainwindow, sizey - WINSIZE_BOTTOM, sizex - WIDTH_MENU_CURRENT, WIDTH_MENU_CURRENT, 0);
+            createWindow(dir_window, sizey - WINSIZE_BOTTOM, WIDTH_MENU_CURRENT, 0, 0);
         }
 
-        // mvprintw(30, 30, std::to_string((int)input).c_str());
         switch (input) {
             case 'q': case 27:
                 running = false;
+                break;
+            case KEY_MOUSE:
+                if (getmouse(&mouse_event) == OK) {
+                    if (mouse_event.bstate == BUTTON1_PRESSED) {
+                        browser.handleMouseClick(mouse_event.y, mouse_event.x);
+                    }
+                    else if (mouse_event.bstate == BUTTON4_PRESSED) {
+                        // Scroll down once
+                        browser.select_up();
+                    }
+                    else if (mouse_event.bstate == BUTTON5_PRESSED) {
+                        // Scroll up once
+                        browser.select_down();
+                    }
+                }
                 break;
             case KEY_DOWN:
                 browser.select_down();
@@ -135,6 +155,16 @@ int main (int argc, char* argv[]) {
                 break;
             case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
                 browser.plotHistogram(mainwindow);
+                break;
+            case 9: // Tab
+                if (WIDTH_MENU_CURRENT == WIDTH_MENU_DEFAULT) {
+                    WIDTH_MENU_CURRENT = WIDTH_MENU_ENLARGE;
+                }
+                else if (WIDTH_MENU_CURRENT == WIDTH_MENU_ENLARGE) {
+                    WIDTH_MENU_CURRENT = WIDTH_MENU_DEFAULT;
+                }
+                browser.plotHistogram(mainwindow);
+                resize_flag = true;
                 break;
         }
     }
