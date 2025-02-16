@@ -16,7 +16,7 @@ int main (int argc, char* argv[]) {
     std::string filename;
 #ifdef DEBUG
     FileBrowser b;
-    b.loadFile("./build/B2psi2SKS_All_pre_B_bdtsel_sw_ft.root");
+    b.loadFile("./build/ntuple.root");
     return EXIT_SUCCESS;
 #else
     if (argc == 2) {

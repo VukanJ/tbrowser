@@ -107,8 +107,9 @@ void FileBrowser::printDirectories() {
     int maxcols = getmaxx(dir_window);
 
     int entry = -menu_scroll_pos;
-    auto print_entry = [this, &entry, y, x](NodeType type, const std::string name, RootFile::Node* node){
+    auto print_entry = [this, &entry, y, x](NodeType type, std::string name, RootFile::Node* node){
         std::string entry_label;
+        name = std::string(node->nesting * 2, ' ') + name;
         color col = white;
         int attr = A_NORMAL;
         switch (type) {
@@ -171,7 +172,7 @@ void FileBrowser::selection_down() {
 }
 
 void FileBrowser::selection_up() {
-    if (selected_pos == 0) {
+    if (selected_pos == 0 && menu_scroll_pos > 0) {
         menu_scroll_pos--;
     }
     selected_pos = std::max<int>(0, selected_pos - 1); 
@@ -353,7 +354,7 @@ void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax,
     }
 }
 
-void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node) {
+void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int depth) {
     TList* keys = dir->GetListOfKeys();
     if (!keys) return;
 
@@ -364,21 +365,21 @@ void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node) {
         if (strcmp(key->GetClassName(), "TTree") == 0) {
             TTree* tree = dynamic_cast<TTree*>(obj);
             root_file.m_trees.push_back(tree);
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TTREE, root_file.m_trees.size() - 1, node));
-            readBranches(node->nodes.back().get(), tree);
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TTREE, root_file.m_trees.size() - 1, node, depth));
+            readBranches(node->nodes.back().get(), tree, depth + 1);
         }
         else if (strcmp(key->GetClassName(), "TH1D") == 0) {
             root_file.m_histos_th1d.push_back(dynamic_cast<TH1D*>(obj));
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::HIST, root_file.m_histos_th1d.size() - 1, node));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::HIST, root_file.m_histos_th1d.size() - 1, node, depth));
         }
         else if (obj->IsA()->InheritsFrom(TDirectory::Class())) {
             root_file.m_directories.push_back(dynamic_cast<TDirectory*>(obj));
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::DIRECTORY, root_file.m_directories.size() - 1, node));
-            traverse_tfile((TDirectory*)obj, node->nodes.back().get());
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::DIRECTORY, root_file.m_directories.size() - 1, node, depth));
+            traverse_tfile((TDirectory*)obj, node->nodes.back().get(), depth + 1);
         }
         else {
             root_file.m_unclassified.push_back(dynamic_cast<TObject*>(obj));
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::UNKNOWN, -1, node));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::UNKNOWN, -1, node, depth));
         }
     }
 }
@@ -399,10 +400,10 @@ void FileBrowser::traverse_tfile(std::string& filename) {
     root_file.root_node.open = true; // has to be forced
 }
 
-void FileBrowser::readBranches(RootFile::Node* node, TTree* tree) {
+void FileBrowser::readBranches(RootFile::Node* node, TTree* tree, int depth) {
     for (auto* leaf : *tree->GetListOfLeaves()) {
         root_file.m_leaves.push_back(static_cast<TLeaf*>(leaf));
-        node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TLEAF, root_file.m_leaves.size() - 1, node));
+        node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TLEAF, root_file.m_leaves.size() - 1, node, depth));
     }
 }
 
@@ -507,16 +508,16 @@ void FileBrowser::handleMenuSelect() {
     }
 }
 
-void FileBrowser::RootFile::updateDisplayList(Node* mothernode, std::string prefix) {
+void FileBrowser::RootFile::updateDisplayList(Node* mothernode, int nesting) {
     for (auto& node : mothernode->nodes) {
         switch (node->type) {
             case NodeType::DIRECTORY:
                 displayList.emplace_back(node->type, m_directories[node->index]->GetName(), node.get());
-                updateDisplayList(node.get(), prefix + " ");
+                updateDisplayList(node.get(), nesting+1);
                 break;
             case NodeType::TTREE:
                 displayList.emplace_back(node->type, m_trees[node->index]->GetName(), node.get());
-                updateDisplayList(node.get(), prefix + " ");
+                updateDisplayList(node.get(), nesting+1);
                 break;
             case NodeType::TLEAF:
                 displayList.emplace_back(node->type, m_leaves[node->index]->GetName(), node.get());
@@ -533,7 +534,7 @@ void FileBrowser::RootFile::updateDisplayList() {
     // Make flat file structure list for quick redraw
     displayList.clear();
     displayList.emplace_back(root_node.type, m_directories[root_node.index]->GetName(), &root_node);
-    updateDisplayList(&root_node, "");
+    updateDisplayList(&root_node);
 }
 
 std::optional<FileBrowser::RootFile::MenuItem> FileBrowser::RootFile::getEntry(int i) {

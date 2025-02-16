@@ -65,15 +65,17 @@ private:
     public:
         struct Node {
             Node() : type(NodeType::UNKNOWN), index(-1) { }
-            Node(NodeType nt, int idx, Node* mot) : type(nt), index(idx), mother(mot) { }
+            Node(NodeType nt, int idx, Node* mot, int nest) 
+                : type(nt), index(idx), mother(mot), nesting(nest) { }
             NodeType type;
-            Node* mother; // So leaves know their tree
             int index = -1; // Logical pointer to storage
+            Node* mother; // So leaves know their tree
             std::vector<std::unique_ptr<Node>> nodes;
 
             bool directory_open = false;  // By default, open all directories
             bool open = false;
             void setOpen(bool, int recurse=0);
+            int nesting = 0;
         } root_node;
 
         std::vector<TDirectory*> m_directories;
@@ -85,7 +87,7 @@ private:
         std::string toString(Node*);
 
         using MenuItem = std::tuple<NodeType, std::string, Node*>;
-        void updateDisplayList(Node*, std::string prefix);
+        void updateDisplayList(Node*, int nesting=0);
         void updateDisplayList();
         std::optional<MenuItem> getEntry(int);
         int menuLength();
@@ -93,9 +95,9 @@ private:
 
     } root_file;
 
-    void traverse_tfile(TDirectory*, RootFile::Node*);
+    void traverse_tfile(TDirectory*, RootFile::Node*, int depth=0);
     void traverse_tfile(std::string& filename);
-    void readBranches(RootFile::Node*, TTree*);
+    void readBranches(RootFile::Node*, TTree*, int depth);
 
 };
 
