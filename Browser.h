@@ -24,7 +24,7 @@ public:
 
 private:
     enum color {
-        blue=1, green, red, white, yellow
+        blue=1, green, red, white, yellow, white_on_blue
     };
     static void init_ncurses();
     static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y);

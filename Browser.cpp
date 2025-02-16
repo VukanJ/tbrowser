@@ -1,4 +1,5 @@
 #include "Browser.h"
+#include "TAxis.h"
 #include <csignal>
 #include <memory>
 #include <algorithm>
@@ -90,6 +91,7 @@ void FileBrowser::init_ncurses() {
     init_pair(red, COLOR_RED, COLOR_BLACK);
     init_pair(white, COLOR_WHITE, COLOR_BLACK);
     init_pair(yellow, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(white_on_blue, COLOR_WHITE, COLOR_BLUE);
 }
 
 void FileBrowser::loadFile(std::string filename) {
@@ -114,15 +116,13 @@ void FileBrowser::printDirectories() {
         int attr = A_NORMAL;
         switch (type) {
             case NodeType::DIRECTORY: 
-                if (node->directory_open) {
-                    entry_label = " " + name;
-                }
-                else {
-                    entry_label = " " + name;
-                }
+                if (node->directory_open) 
+                    { entry_label = " " + name; }
+                else
+                    { entry_label = " " + name; }
                 col = yellow;
                 break;
-            case NodeType::TLEAF:   entry_label = " " + name; break;
+            case NodeType::TLEAF:   entry_label = " " + name; attr = A_ITALIC; break;
             case NodeType::TTREE:   entry_label = " " + name; col = green; attr = A_BOLD; break;
             case NodeType::HIST:    entry_label = " " + name; col = blue; attr = A_ITALIC; break;
             case NodeType::UNKNOWN: entry_label = "? " + name; col = red; break;
@@ -152,7 +152,6 @@ void FileBrowser::printDirectories() {
                     auto descr = root_file.toString(node);
                     mvprintw(y+maxlines+1, x, "%s", descr.c_str());
                     clrtoeol();
-                    // mvprintw(y+maxlines+1, x + descr.size(), "%s", std::string(maxcols-descr.size(), ' ').c_str());
                 }
             }
         }
@@ -296,8 +295,9 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     int line = 1;
     if (showstats) {
         mvprintw(wy + line++, wx + mainwin_x - 30, "Entries: %i", (int)hist.GetEntries());
-        mvprintw(wy + line++, wx + mainwin_x - 30, "Mean:    %.2f ± %.2f", hist.GetMean(), hist.GetMeanError());
-        mvprintw(wy + line++, wx + mainwin_x - 30, "Std:     %.2f ± %.2f", hist.GetStdDev(), hist.GetStdDevError());
+        mvprintw(wy + line++, wx + mainwin_x - 30, "Mean:    %.5f", hist.GetMean());
+        mvprintw(wy + line++, wx + mainwin_x - 30, "Std:     %.5f", hist.GetStdDev());
+        mvprintw(wy + line++, wx + mainwin_x - 30, "Bins:    %i",   bins_x);
     }
 
     mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
@@ -332,26 +332,64 @@ void FileBrowser::printKeyBindings(int y, int x) {
 void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax, 
                            int posy, int posx, int wy, int wx) 
 {
-    std::vector<char> xaxis(wx-1, '-');
+    mvprintw(18, 20, "xmin %f", xmin);
+    mvprintw(19, 20, "xmax %f", xmax);
+    int nbins_approx = 10;
+    double range = (xmax - xmin);
+    double rawStep = (xmax - xmin) / nbins_approx;
+    double mag = floor(log10(range / nbins_approx));
+    attron(COLOR_PAIR(white_on_blue));
+    mvprintw(20, 20, "range %f", range);
+    mvprintw(21, 20, "rawStep %f", rawStep);
+    mvprintw(22, 20, "mag %f", mag);
 
-    auto xwidth = xmax - xmin;
-    // mvprintw(30, 30, std::to_string(xwidth).c_str());
-    int nticks = 5;
-    for (double xt = xmin; xt <= xmax; xt += xwidth / nticks) {
-        int offset = ((xt - xmin) / xwidth) * wx;
-        xaxis[std::min<int>(offset, xaxis.size() - 1)] = '+';
+    rawStep = round(rawStep / pow(10, mag)) * pow(10, mag);
+    mvprintw(23, 20, "rawStep %f", rawStep);
+    xmin = floor(xmin / rawStep) * rawStep;
+    xmax = ceil(xmax / rawStep) * rawStep;
+    mvprintw(24, 20, "xmin corrected %f", xmin);
+    mvprintw(25, 20, "xmax corrected %f", xmax);
+    int nbins = round((xmax - xmin) / rawStep);
+    mvprintw(26, 20, "nbins %i", nbins);
+    attron(COLOR_PAIR(white_on_blue));
+
+    TAxis xaxis;
+    TAxis yaxis;
+    xaxis.Set(nbins, xmin, xmax);
+    yaxis.Set(nbins, ymin, ymax);
+    //xaxis.SetNdivisions(510); // 5 major, 10 minor
+    //yaxis.SetNdivisions(510); // 5 major, 10 minor
+    int nBinsX = xaxis.GetNbins();
+    int nBinsY = yaxis.GetNbins();
+    for (int i = 0; i <= nBinsX; ++i) {
+        double tickPos = xaxis.GetBinLowEdge(i + 1);
+        mvprintw(10+i, 40, " xTick %i at %f", i, tickPos);
+    }
+    for (int i = 0; i <= nBinsY; ++i) {
+        double tickPos = yaxis.GetBinLowEdge(i + 1);
+        mvprintw(10+i, 70, "yTick %i at %f", i, tickPos);
     }
 
-    for (int i = 0; char c : xaxis) {
-        if (xaxis[i] == '-') {
-            mvprintw(posy + wy - 1, posx + 1 + i, "─");
-        }
-        else if (xaxis[i] == '+') {
-            mvprintw(posy + wy - 1, posx + 1 + i, "┼");
-        }
-
-        i++;
-    }
+    //std::vector<char> xaxis(wx-1, '-');
+    //
+    //auto xwidth = xmax - xmin;
+    //// mvprintw(30, 30, std::to_string(xwidth).c_str());
+    //int nticks = 5;
+    //for (double xt = xmin; xt <= xmax; xt += xwidth / nticks) {
+    //    int offset = ((xt - xmin) / xwidth) * wx;
+    //    xaxis[std::min<int>(offset, xaxis.size() - 1)] = '+';
+    //}
+    //
+    //for (int i = 0; char c : xaxis) {
+    //    if (xaxis[i] == '-') {
+    //        mvprintw(posy + wy - 1, posx + 1 + i, "─");
+    //    }
+    //    else if (xaxis[i] == '+') {
+    //        mvprintw(posy + wy - 1, posx + 1 + i, "┼");
+    //    }
+    //
+    //    i++;
+    //}
 }
 
 void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int depth) {
