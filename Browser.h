@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "TFile.h"
+#include "TObject.h"
 #include "TTree.h"
 #include "TKey.h"
 #include "TLeaf.h"
@@ -48,6 +49,7 @@ private:
     int mainwin_x;
     int mainwin_y;
     int selected_pos = 0;
+    int menu_scroll_pos = 0;
     bool showkeys = false;
     bool showstats = true;
     bool logscale = false;
@@ -63,20 +65,24 @@ private:
     public:
         struct Node {
             Node() : type(NodeType::UNKNOWN), index(-1) { }
-            Node(NodeType nt, int idx) : type(nt), index(idx) { }
+            Node(NodeType nt, int idx, Node* mot) : type(nt), index(idx), mother(mot) { }
             NodeType type;
+            Node* mother; // So leaves know their tree
             int index = -1; // Logical pointer to storage
             std::vector<std::unique_ptr<Node>> nodes;
 
-            bool directory_open = true;  // By default, open all directories
-            bool open = true;
-            void setOpen(bool);
+            bool directory_open = false;  // By default, open all directories
+            bool open = false;
+            void setOpen(bool, int recurse=0);
         } root_node;
 
         std::vector<TDirectory*> m_directories;
         std::vector<TTree*> m_trees;
         std::vector<TLeaf*> m_leaves;
         std::vector<TH1D*> m_histos_th1d;
+        std::vector<TObject*> m_unclassified;
+
+        std::string toString(Node*);
 
         using MenuItem = std::tuple<NodeType, std::string, Node*>;
         void updateDisplayList(Node*, std::string prefix);
