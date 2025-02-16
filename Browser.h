@@ -44,14 +44,7 @@ private:
 
     WINDOW* dir_window = nullptr;
     WINDOW* main_window = nullptr;
-    std::array<const char[4], 8> ascii {
-        "▖", "▗", "▄", 
-        "▌", "▐", "▙", 
-        "▟", "█",
-    };
     std::unique_ptr<TFile> m_tfile;
-    TTree* m_active_tree = nullptr;
-    std::vector<TLeaf*> m_leaves;
     int mainwin_x;
     int mainwin_y;
     int selected_pos = 0;
@@ -62,24 +55,27 @@ private:
     int terminal_size_y;
     int terminal_size_x;
 
-    enum class NodeType { DIRECTORY, TTREE, LEAF, HIST, UNKNOWN };
+    int menu_width = 20;
+    int bottom_height = 6;
+
+    enum class NodeType { DIRECTORY, TTREE, TLEAF, HIST, UNKNOWN };
     class RootFile {
     public:
         struct Node {
             Node() : type(NodeType::UNKNOWN), index(-1) { }
             Node(NodeType nt, int idx) : type(nt), index(idx) { }
-            Node(NodeType nt, int idx, Node* mot) : type(nt), index(idx), mother(mot) { }
             NodeType type;
             int index = -1; // Logical pointer to storage
-            Node* mother = nullptr; // Containing directory
             std::vector<std::unique_ptr<Node>> nodes;
 
-            bool displayInMenu();
             bool directory_open = true;  // By default, open all directories
+            bool open = true;
+            void setOpen(bool);
         } root_node;
 
         std::vector<TDirectory*> m_directories;
         std::vector<TTree*> m_trees;
+        std::vector<TLeaf*> m_leaves;
         std::vector<TH1D*> m_histos_th1d;
 
         using MenuItem = std::tuple<NodeType, std::string, Node*>;
@@ -91,8 +87,9 @@ private:
 
     } root_file;
 
-    void debug_listdir(TDirectory*, RootFile::Node*);
-    void debug_traverse(std::string& filename);
+    void traverse_tfile(TDirectory*, RootFile::Node*);
+    void traverse_tfile(std::string& filename);
+    void readBranches(RootFile::Node*, TTree*);
 
 };
 

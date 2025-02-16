@@ -1,6 +1,5 @@
 #include "Browser.h"
 #include <csignal>
-#include <iostream>
 #include <memory>
 #include <algorithm>
 #include <ncurses.h>
@@ -32,16 +31,18 @@ enum ASCII_code : std::uint8_t {
 };
 
 std::unordered_map<ASCII_code, ASCII> ascii_map = {
-    {C_VOID, VOID},
-    {C_LOWER_LEFT, LOWER_LEFT},
-    {C_LOWER_RIGHT, LOWER_RIGHT},
-    {C_LOWER_HALF, LOWER_HALF},
-    {C_LEFT_HALF, LEFT_HALF},
-    {C_RIGHT_HALF, RIGHT_HALF},
-    {C_STAIRS_LEFT, STAIRS_LEFT},
+    {C_VOID,         VOID},
+    {C_LOWER_LEFT,   LOWER_LEFT},
+    {C_LOWER_RIGHT,  LOWER_RIGHT},
+    {C_LOWER_HALF,   LOWER_HALF},
+    {C_LEFT_HALF,    LEFT_HALF},
+    {C_RIGHT_HALF,   RIGHT_HALF},
+    {C_STAIRS_LEFT,  STAIRS_LEFT},
     {C_STAIRS_RIGHT, STAIRS_RIGHT},
-    {C_FULL_BLOCK, FULL_BLOCK},
+    {C_FULL_BLOCK,   FULL_BLOCK},
 };
+
+std::array<const char[4], 8> ascii { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█", };
 
 volatile bool resize_flag = false;
 
@@ -49,8 +50,8 @@ FileBrowser::FileBrowser() {
     init_ncurses();
     int sizex = getmaxx(stdscr);
     int sizey = getmaxy(stdscr);;
-    createWindow(main_window, sizey - 6, sizex - 20, 20, 0);
-    createWindow(dir_window, sizey - 6, 20, 0, 0);
+    createWindow(main_window, sizey - bottom_height, sizex - menu_width, menu_width, 0);
+    createWindow(dir_window, sizey - bottom_height, menu_width, 0, 0);
 
     refresh();
     box(main_window, 0, 0);
@@ -65,7 +66,6 @@ FileBrowser::~FileBrowser() {
             m_tfile->Close();
         }
     }
-
     delwin(main_window);
     delwin(dir_window);
     endwin();
@@ -79,7 +79,6 @@ void FileBrowser::init_ncurses() {
     cbreak();
     keypad(stdscr, TRUE);
     curs_set(0);
-    // halfdelay(20);
     signal(SIGWINCH, [](int signum) { resize_flag = true; });
 
     mouseinterval(0);
@@ -94,7 +93,10 @@ void FileBrowser::init_ncurses() {
 }
 
 void FileBrowser::loadFile(std::string filename) {
-    debug_traverse(filename);
+    mvprintw(1, 1, "Reading...");
+    refresh();
+
+    traverse_tfile(filename);
     root_file.updateDisplayList();
 }
 
@@ -117,7 +119,7 @@ void FileBrowser::printDirectories() {
                 }
                 col = yellow;
                 break;
-            case NodeType::LEAF:    entry_label = " " + name; break;
+            case NodeType::TLEAF:   entry_label = " " + name; break;
             case NodeType::TTREE:   entry_label = " " + name; col = green; attr = A_BOLD; break;
             case NodeType::HIST:    entry_label = " " + name; col = blue; attr = A_ITALIC; break;
             case NodeType::UNKNOWN: entry_label = "? " + name; col = red; break;
@@ -139,17 +141,18 @@ void FileBrowser::printDirectories() {
     };
 
     for (const auto& [type, name, node] : root_file.displayList) {
-        if (node->displayInMenu()) {
+        if (node->open) {
             print_entry(type, name, node);
         }
     }
 
     box(dir_window, 0, 0);
     wrefresh(dir_window);
+
+    mvprintw(31, 30, "LENGTH %i", root_file.displayList.size());
 }
 
 void FileBrowser::selection_down() {
-    mvprintw(30, 30, "MENU_LEGTH %i", root_file.menuLength());
     selected_pos = std::min<int>(std::min<int>(root_file.menuLength() - 1, getmaxy(dir_window) - 4), selected_pos + 1); 
 }
 
@@ -178,7 +181,7 @@ void FileBrowser::toggleLogy() {
 } 
 
 void FileBrowser::plotHistogram() {
-    plotHistogram(m_active_tree, m_leaves.at(selected_pos));
+    // plotHistogram(m_active_tree, m_leaves.at(selected_pos));
 }
 
 void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
@@ -327,7 +330,7 @@ void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax,
     }
 }
 
-void FileBrowser::debug_listdir(TDirectory* dir, RootFile::Node* node) {
+void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node) {
     TList* keys = dir->GetListOfKeys();
     if (!keys) return;
 
@@ -336,25 +339,27 @@ void FileBrowser::debug_listdir(TDirectory* dir, RootFile::Node* node) {
         TObject* obj = key->ReadObj();
 
         if (strcmp(key->GetClassName(), "TTree") == 0) {
-            root_file.m_trees.push_back(dynamic_cast<TTree*>(obj));
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TTREE, root_file.m_trees.size() - 1, node));
+            TTree* tree = dynamic_cast<TTree*>(obj);
+            root_file.m_trees.push_back(tree);
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TTREE, root_file.m_trees.size() - 1));
+            readBranches(node->nodes.back().get(), tree);
         }
         else if (strcmp(key->GetClassName(), "TH1D") == 0) {
             root_file.m_histos_th1d.push_back(dynamic_cast<TH1D*>(obj));
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::HIST, root_file.m_histos_th1d.size() - 1, node));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::HIST, root_file.m_histos_th1d.size() - 1));
         }
         else if (obj->IsA()->InheritsFrom(TDirectory::Class())) {
             root_file.m_directories.push_back(dynamic_cast<TDirectory*>(obj));
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::DIRECTORY, root_file.m_directories.size() - 1, node));
-            debug_listdir((TDirectory*)obj, node->nodes.back().get());
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::DIRECTORY, root_file.m_directories.size() - 1));
+            traverse_tfile((TDirectory*)obj, node->nodes.back().get());
         }
         else {
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::UNKNOWN, -1, node));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::UNKNOWN, -1));
         }
     }
 }
 
-void FileBrowser::debug_traverse(std::string& filename) {
+void FileBrowser::traverse_tfile(std::string& filename) {
     m_tfile = std::unique_ptr<TFile>(TFile::Open(filename.c_str(), "READ"));
     if (!m_tfile || m_tfile->IsZombie()) {
         return;
@@ -363,10 +368,16 @@ void FileBrowser::debug_traverse(std::string& filename) {
     root_file.m_directories.push_back(m_tfile.get());
     root_file.root_node.index = 0;
     root_file.root_node.type = NodeType::DIRECTORY;
-    debug_listdir(m_tfile.get(), &root_file.root_node);
+    traverse_tfile(m_tfile.get(), &root_file.root_node);
 
-    if (root_file.m_trees.size() > 0) {
-        m_active_tree = root_file.m_trees.back();
+    // Open stuff
+    root_file.root_node.setOpen(true);
+}
+
+void FileBrowser::readBranches(RootFile::Node* node, TTree* tree) {
+    for (auto* leaf : *tree->GetListOfLeaves()) {
+        root_file.m_leaves.push_back(static_cast<TLeaf*>(leaf));
+        node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TLEAF, root_file.m_leaves.size() - 1));
     }
 }
 
@@ -441,8 +452,8 @@ void FileBrowser::handleResize() {
         terminal_size_y = sizey;
         endwin();
         refresh();
-        createWindow(main_window, terminal_size_y - 6, terminal_size_x - 20, 20, 0);
-        createWindow(dir_window, terminal_size_y - 6, 20, 0, 0);
+        createWindow(main_window, terminal_size_y - bottom_height, terminal_size_x - menu_width, menu_width, 0);
+        createWindow(dir_window, terminal_size_y - bottom_height, menu_width, 0, 0);
     }
     else {
         // mvprintw(getmaxy(dir_window), 0, " FAKERESIZE %i,%i", sizey, sizex);
@@ -462,11 +473,8 @@ void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, 
 
 void FileBrowser::handleMenuSelect() {
     auto [type, name, node] = root_file.displayList.at(selected_pos);
-    switch (type) {
-        case NodeType::DIRECTORY:
-            node->directory_open = !node->directory_open;
-            root_file.updateDisplayList();
-            break;
+    if (type == NodeType::DIRECTORY || type == NodeType::TTREE) {
+        node->setOpen(!node->directory_open);
     }
 }
 
@@ -479,6 +487,10 @@ void FileBrowser::RootFile::updateDisplayList(Node* mothernode, std::string pref
                 break;
             case NodeType::TTREE:
                 displayList.emplace_back(node->type, m_trees[node->index]->GetName(), node.get());
+                updateDisplayList(node.get(), prefix + " ");
+                break;
+            case NodeType::TLEAF:
+                displayList.emplace_back(node->type, m_leaves[node->index]->GetName(), node.get());
                 break;
             case NodeType::HIST:
                 displayList.emplace_back(node->type, m_histos_th1d[node->index]->GetName(), node.get());
@@ -498,7 +510,7 @@ void FileBrowser::RootFile::updateDisplayList() {
 std::optional<FileBrowser::RootFile::MenuItem> FileBrowser::RootFile::getEntry(int i) {
     int entry = 0;
     for (size_t j = 0; j < displayList.size(); ++j) {
-        if (std::get<2>(displayList[j])->displayInMenu()) {
+        if (std::get<2>(displayList[j])->open) {
             if (entry == i) {
                 return displayList[j];
             }
@@ -511,22 +523,18 @@ std::optional<FileBrowser::RootFile::MenuItem> FileBrowser::RootFile::getEntry(i
 int FileBrowser::RootFile::menuLength() {
     int length = 0;
     for (const auto& [a, b, node] : displayList) {
-        if (node->displayInMenu()) {
+        if (node->open) {
             length++;
         }
     }
     return length;
 }
 
-bool FileBrowser::RootFile::Node::displayInMenu() {
-    // return true if this node is visible (its containing directory is open)
-    if (mother == nullptr) {
-        return true; // Root always visible
-    }
-    if (type == NodeType::DIRECTORY && !directory_open) {
-        return false;
-    }
-    else {
-        return mother->displayInMenu();
+void FileBrowser::RootFile::Node::setOpen(bool state) {
+    if (type == NodeType::DIRECTORY || type == NodeType::TTREE) {
+        directory_open = state;
+        for (auto& node : nodes) {
+            node->open = state;
+        }
     }
 }
