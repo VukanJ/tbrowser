@@ -1,5 +1,6 @@
 #include "Browser.h"
 #include "TAxis.h"
+#include <cmath>
 #include <csignal>
 #include <memory>
 #include <algorithm>
@@ -150,7 +151,7 @@ void FileBrowser::printDirectories() {
                 print_entry(type, name, node);
                 if (entry == selected_pos+1) {
                     auto descr = root_file.toString(node);
-                    mvprintw(y+maxlines+1, x, "%s", descr.c_str());
+                    mvprintw(getmaxy(stdscr)-1, 0, "%s", descr.c_str());
                     clrtoeol();
                 }
             }
@@ -303,11 +304,11 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
     printKeyBindings(wy + line++, wx + mainwin_x - 30);
 
-    mvprintw(wy + mainwin_y + 1, wx + 1, "->Draw(");
+    mvprintw(wy + mainwin_y + 2, wx + 1, "->Draw(");
     attron(A_REVERSE);
-    mvprintw(wy + mainwin_y + 1, wx + 8, "<d>");
+    mvprintw(wy + mainwin_y + 2, wx + 8, "<d>");
     attroff(A_REVERSE);
-    mvprintw(wy + mainwin_y + 1, wx + 11, ")");
+    mvprintw(wy + mainwin_y + 2, wx + 11, ")");
 
     plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
     refresh();
@@ -332,25 +333,25 @@ void FileBrowser::printKeyBindings(int y, int x) {
 void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax, 
                            int posy, int posx, int wy, int wx) 
 {
-    mvprintw(18, 20, "xmin %f", xmin);
-    mvprintw(19, 20, "xmax %f", xmax);
+    // mvprintw(18, 20, "xmin %f", xmin);
+    // mvprintw(19, 20, "xmax %f", xmax);
     int nbins_approx = 10;
     double range = (xmax - xmin);
     double rawStep = (xmax - xmin) / nbins_approx;
     double mag = floor(log10(range / nbins_approx));
     attron(COLOR_PAIR(white_on_blue));
-    mvprintw(20, 20, "range %f", range);
-    mvprintw(21, 20, "rawStep %f", rawStep);
-    mvprintw(22, 20, "mag %f", mag);
+    // mvprintw(20, 20, "range %f", range);
+    // mvprintw(21, 20, "rawStep %f", rawStep);
+    // mvprintw(22, 20, "mag %f", mag);
 
     rawStep = round(rawStep / pow(10, mag)) * pow(10, mag);
-    mvprintw(23, 20, "rawStep %f", rawStep);
+    // mvprintw(23, 20, "rawStep %f", rawStep);
     xmin = floor(xmin / rawStep) * rawStep;
     xmax = ceil(xmax / rawStep) * rawStep;
-    mvprintw(24, 20, "xmin corrected %f", xmin);
-    mvprintw(25, 20, "xmax corrected %f", xmax);
+    // mvprintw(24, 20, "xmin corrected %f", xmin);
+    // mvprintw(25, 20, "xmax corrected %f", xmax);
     int nbins = round((xmax - xmin) / rawStep);
-    mvprintw(26, 20, "nbins %i", nbins);
+    // mvprintw(26, 20, "nbins %i", nbins);
     attron(COLOR_PAIR(white_on_blue));
 
     TAxis xaxis;
@@ -361,35 +362,46 @@ void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax,
     //yaxis.SetNdivisions(510); // 5 major, 10 minor
     int nBinsX = xaxis.GetNbins();
     int nBinsY = yaxis.GetNbins();
+    /* for (int i = 0; i <= nBinsX; ++i) { */
+    /*     double tickPos = xaxis.GetBinLowEdge(i + 1); */
+    /*     mvprintw(10+i, 40, " xTick %i at %f", i, tickPos); */
+    /* } */
+    /* for (int i = 0; i <= nBinsY; ++i) { */
+    /*     double tickPos = yaxis.GetBinLowEdge(i + 1); */
+    /*     mvprintw(10+i, 70, "yTick %i at %f", i, tickPos); */
+    /* } */
+    attroff(COLOR_PAIR(white_on_blue));
+
+    std::vector<char> xaxis_chars(wx-1, '-');
+
+    move(posy + wy, posx);
+    clrtoeol();
     for (int i = 0; i <= nBinsX; ++i) {
         double tickPos = xaxis.GetBinLowEdge(i + 1);
-        mvprintw(10+i, 40, " xTick %i at %f", i, tickPos);
+        int charpos = (tickPos - xmin) / range * (wx-1);
+        xaxis_chars[std::min<int>(charpos, wx - 2)] = '+';
+        mvprintw(posy + wy - 1, posx + 1 + charpos, "┼");
+        attron(A_ITALIC);
+        if (trunc(tickPos) == tickPos) {
+            mvprintw(posy + wy, posx + 1 + charpos, "%i", (int)tickPos);
+        }
+        else {
+            mvprintw(posy + wy, posx + 1 + charpos, "%.3f", tickPos);
+        }
+        attroff(A_ITALIC);
     }
-    for (int i = 0; i <= nBinsY; ++i) {
-        double tickPos = yaxis.GetBinLowEdge(i + 1);
-        mvprintw(10+i, 70, "yTick %i at %f", i, tickPos);
+    
+    for (int i = 0; char c : xaxis_chars) {
+        if (c == '-') {
+            mvprintw(posy + wy - 1, posx + 1 + i, "─");
+        }
+        else if (c == '+') {
+            mvprintw(posy + wy - 1, posx + 1 + i, "┼");
+        }
+    
+        i++;
     }
-
-    //std::vector<char> xaxis(wx-1, '-');
-    //
-    //auto xwidth = xmax - xmin;
-    //// mvprintw(30, 30, std::to_string(xwidth).c_str());
-    //int nticks = 5;
-    //for (double xt = xmin; xt <= xmax; xt += xwidth / nticks) {
-    //    int offset = ((xt - xmin) / xwidth) * wx;
-    //    xaxis[std::min<int>(offset, xaxis.size() - 1)] = '+';
-    //}
-    //
-    //for (int i = 0; char c : xaxis) {
-    //    if (xaxis[i] == '-') {
-    //        mvprintw(posy + wy - 1, posx + 1 + i, "─");
-    //    }
-    //    else if (xaxis[i] == '+') {
-    //        mvprintw(posy + wy - 1, posx + 1 + i, "┼");
-    //    }
-    //
-    //    i++;
-    //}
+    mvprintw(posy + wy - 1, posx + wx - 1, "┘");
 }
 
 void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int depth) {
@@ -511,7 +523,7 @@ void FileBrowser::handleResize() {
     int sizey = getmaxy(stdscr);
     getmaxyx(stdscr, sizey, sizex);
     // !!! May be false positive, check
-    if (sizex != terminal_size_x || sizey != terminal_size_y) {
+    if (true || sizex != terminal_size_x || sizey != terminal_size_y) {
         // mvprintw(getmaxy(dir_window), 0, "RESIZE %i,%i", sizey, sizex);
         terminal_size_x = sizex;
         terminal_size_y = sizey;
