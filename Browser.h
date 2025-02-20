@@ -43,6 +43,16 @@ private:
     void plotHistogram(TTree*, TLeaf*);
     void plotAxes(double, double, double, double, int, int, int, int);
 
+    struct AxisTicks {
+        std::vector<double> values_d;
+        std::vector<long> values_i;
+        std::vector<std::string> values_str;
+        bool integer;
+        long E = 0; // Exponent
+        int nbins = 1;
+    };
+    AxisTicks niceBinning(double& vmin, double& vmax) const;
+
     WINDOW* dir_window = nullptr;
     WINDOW* main_window = nullptr;
     std::unique_ptr<TFile> m_tfile;

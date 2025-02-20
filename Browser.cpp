@@ -2,10 +2,12 @@
 #include "TAxis.h"
 #include <cmath>
 #include <csignal>
+#include <format>
 #include <memory>
 #include <algorithm>
 #include <ncurses.h>
 #include <string>
+#include <unistd.h>
 #include <unordered_map>
 
 enum ASCII : std::uint8_t {
@@ -151,8 +153,9 @@ void FileBrowser::printDirectories() {
                 print_entry(type, name, node);
                 if (entry == selected_pos+1) {
                     auto descr = root_file.toString(node);
-                    mvprintw(getmaxy(stdscr)-1, 0, "%s", descr.c_str());
+                    move(getmaxy(stdscr)-1, 0);
                     clrtoeol();
+                    mvprintw(getmaxy(stdscr)-1, 0, "%s", descr.c_str());
                 }
             }
         }
@@ -330,38 +333,35 @@ void FileBrowser::printKeyBindings(int y, int x) {
     }
 }
 
-void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax, 
-                           int posy, int posx, int wy, int wx) 
-{
+FileBrowser::AxisTicks FileBrowser::niceBinning(double& vmin, double& vmax) const {
+    AxisTicks axticks;
+    
     // mvprintw(18, 20, "xmin %f", xmin);
     // mvprintw(19, 20, "xmax %f", xmax);
     int nbins_approx = 10;
-    double range = (xmax - xmin);
-    double rawStep = (xmax - xmin) / nbins_approx;
+    double range = (vmax - vmin);
+    double rawStep = (vmax - vmin) / nbins_approx;
     double mag = floor(log10(range / nbins_approx));
-    attron(COLOR_PAIR(white_on_blue));
+    /* attron(COLOR_PAIR(white_on_blue)); */
     // mvprintw(20, 20, "range %f", range);
     // mvprintw(21, 20, "rawStep %f", rawStep);
     // mvprintw(22, 20, "mag %f", mag);
 
     rawStep = round(rawStep / pow(10, mag)) * pow(10, mag);
     // mvprintw(23, 20, "rawStep %f", rawStep);
-    xmin = floor(xmin / rawStep) * rawStep;
-    xmax = ceil(xmax / rawStep) * rawStep;
+    vmin = floor(vmin / rawStep) * rawStep;
+    vmax = ceil(vmax / rawStep) * rawStep;
     // mvprintw(24, 20, "xmin corrected %f", xmin);
     // mvprintw(25, 20, "xmax corrected %f", xmax);
-    int nbins = round((xmax - xmin) / rawStep);
+    int nbins = round((vmax - vmin) / rawStep);
     // mvprintw(26, 20, "nbins %i", nbins);
-    attron(COLOR_PAIR(white_on_blue));
+    /* attron(COLOR_PAIR(white_on_blue)); */
 
     TAxis xaxis;
-    TAxis yaxis;
-    xaxis.Set(nbins, xmin, xmax);
-    yaxis.Set(nbins, ymin, ymax);
+    xaxis.Set(nbins, vmin, vmax);
     //xaxis.SetNdivisions(510); // 5 major, 10 minor
     //yaxis.SetNdivisions(510); // 5 major, 10 minor
     int nBinsX = xaxis.GetNbins();
-    int nBinsY = yaxis.GetNbins();
     /* for (int i = 0; i <= nBinsX; ++i) { */
     /*     double tickPos = xaxis.GetBinLowEdge(i + 1); */
     /*     mvprintw(10+i, 40, " xTick %i at %f", i, tickPos); */
@@ -370,26 +370,102 @@ void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax,
     /*     double tickPos = yaxis.GetBinLowEdge(i + 1); */
     /*     mvprintw(10+i, 70, "yTick %i at %f", i, tickPos); */
     /* } */
-    attroff(COLOR_PAIR(white_on_blue));
+    /* attroff(COLOR_PAIR(white_on_blue)); */
 
-    std::vector<char> xaxis_chars(wx-1, '-');
+    // Collect ticks
+    for (int i = 0; i <= nBinsX; ++i) {
+        double tickPos = xaxis.GetBinLowEdge(i + 1);
+        axticks.values_d.push_back(tickPos);
+        axticks.values_i.push_back(lround(tickPos));
+    }
+
+    axticks.nbins = axticks.values_i.size();
+    axticks.integer = std::all_of(axticks.values_d.begin(), axticks.values_d.end(), 
+            [](double val){ return trunc(val) == val; });
+
+    auto count_0 = [](long I){
+        auto c = 0;
+        while (I % 10 == 0 && I != 0) { I /= 10; c++; }
+        return c;
+    };
+
+    if (axticks.integer) {
+        // Compute exponent
+        int minNumZero = 10000;
+        for (int i = 0; auto v : axticks.values_i) {
+            int n0 = count_0(v);
+            mvprintw(20 + ++i, 80, "%ld %i", v, n0);
+            if (v != 0 && n0 < minNumZero) {
+                minNumZero = n0;
+            }
+        }
+        if (minNumZero >= 3) {
+            axticks.E = minNumZero;
+            for (auto& v : axticks.values_i) { v /= std::pow<long>(10, axticks.E); }
+            for (int j = 0; auto& v : axticks.values_d) { v = axticks.values_i[j++]; }
+        }
+        else {
+            axticks.E = 0;
+        }
+    }
+
+    if (axticks.integer) {
+        axticks.values_str.reserve(axticks.values_d.size());
+        for (auto v : axticks.values_i) {
+            axticks.values_str.push_back(std::to_string(v));
+        }
+    }
+    else {
+    }
+
+    return axticks;
+}
+
+void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax, 
+                           int posy, int posx, int wy, int wx) 
+{
+
+    mvprintw(18, 30, "xmin %f", xmin);
+    mvprintw(19, 30, "xmax %f", xmax);
+    auto xbinning = niceBinning(xmin, xmax);
+    mvprintw(20, 30, "xmin' %f", xmin);
+    mvprintw(21, 30, "xmax' %f", xmax);
+    for (int i = 0; auto x : xbinning.values_d) {
+        mvprintw(21+ ++i, 30, "%f", x);
+    }
+    auto nBinsX = xbinning.nbins;
+    double rangeX = xmax - xmin;
+
+    auto nchars = wx - 1;
+    std::vector<char> xaxis_chars(nchars, '-');
 
     move(posy + wy, posx);
     clrtoeol();
-    for (int i = 0; i <= nBinsX; ++i) {
-        double tickPos = xaxis.GetBinLowEdge(i + 1);
-        int charpos = (tickPos - xmin) / range * (wx-1);
-        xaxis_chars[std::min<int>(charpos, wx - 2)] = '+';
-        mvprintw(posy + wy - 1, posx + 1 + charpos, "┼");
+    if (xbinning.E > 0) { attron(COLOR_PAIR(yellow)); }
+    for (int i = 0; i < nBinsX; ++i) {
+        double tickPos = xbinning.values_d[i] * std::pow(10.0, xbinning.E);
+        int charpos = (tickPos - xmin) / rangeX * nchars;
+        if (charpos < 0) continue;
+        xaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
+
         attron(A_ITALIC);
+        attron(A_BOLD);
         if (trunc(tickPos) == tickPos) {
-            mvprintw(posy + wy, posx + 1 + charpos, "%i", (int)tickPos);
+            long tick = xbinning.values_i[i];
+            int ticklen = xbinning.values_str[i].size();
+            if (tick < 0) {
+                ticklen++;
+            }
+
+            mvprintw(posy + wy, posx + 1 + charpos - ticklen / 2, "%ld", tick);
         }
         else {
-            mvprintw(posy + wy, posx + 1 + charpos, "%.3f", tickPos);
+            // mvprintw(posy + wy, posx + 1 + charpos - 2, "%.3f", tickPos);
         }
+        attroff(A_BOLD);
         attroff(A_ITALIC);
     }
+    if (xbinning.E > 0) { attroff(COLOR_PAIR(yellow)); }
     
     for (int i = 0; char c : xaxis_chars) {
         if (c == '-') {
@@ -401,7 +477,17 @@ void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax,
     
         i++;
     }
-    mvprintw(posy + wy - 1, posx + wx - 1, "┘");
+    mvprintw(posy + wy - 1, posx + nchars, "┘");
+
+    // Print exponent if needed
+    if (xbinning.E > 0) {
+        attron(COLOR_PAIR(yellow));
+        attron(A_BOLD);
+        std::string magnitude = "x10^" + std::to_string(xbinning.E);
+        mvprintw(posy+wy+1, posx+wx-magnitude.size(), "%s", magnitude.c_str());
+        attroff(A_BOLD);
+        attroff(COLOR_PAIR(yellow));
+    }
 }
 
 void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int depth) {
