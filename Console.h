@@ -19,6 +19,8 @@ public:
     bool entering_draw_command = false; // Input mode
     bool valid_char(int);
 
+    void cursor_move(int);
+
     DrawArgs current_args{"", "", "", 0, 0};
 
     std::string last_error;

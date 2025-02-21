@@ -123,3 +123,8 @@ bool Console::valid_char(int c) {
     return isalnum(c) || allowed_chars.contains(c);
 }
 
+void Console::cursor_move(int pos) {
+    if (pos >= 0 && pos < current_input.size()) {
+        curs_offset = current_input.size() - pos;
+    }
+}

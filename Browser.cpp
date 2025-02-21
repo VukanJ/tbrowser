@@ -521,6 +521,8 @@ void FileBrowser::handleMouseClick(int y, int x) {
     }
     else if (isClickInWindow(cmd_window, y, x)) {
         console.entering_draw_command = true;
+        int posx = x - getbegx(cmd_window) - 1;
+        console.cursor_move(posx);
         refresh_cmd_window();
     }
 }
