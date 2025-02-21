@@ -1,8 +1,10 @@
 #include "Browser.h"
 #include "AxisTicks.h"
+#include <cctype>
 #include <cmath>
 #include <csignal>
 #include <format>
+#include <locale>
 #include <memory>
 #include <algorithm>
 #include <ncurses.h>
@@ -36,7 +38,7 @@ FileBrowser::FileBrowser() {
     createWindow(dir_window, sizey - bottom_height, menu_width, 0, 0);
     createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 2, 20 + 5);
 
-    refresh();
+refresh();
     box(dir_window, 0, 0);
     box(main_window, 0, 0);
     wrefresh(main_window);
@@ -390,41 +392,53 @@ void FileBrowser::refresh_cmd_window() {
     mvprintw(posy, posx - 6, "Draw(");
     attroff(COLOR_PAIR(red));
 
-    // Command state
-    if (entering_draw_command) {
-        attron(COLOR_PAIR(yellow));
-        attron(A_REVERSE);
-        mvprintw(posy-2, posx, " INPUT ");
-        attroff(A_REVERSE);
-        attroff(COLOR_PAIR(yellow));
+    bool error_display = false;
+    if (!console.last_error.empty()) {
+        error_display = true;
+        attron(COLOR_PAIR(red));
+        mvprintw(posy, posx, "%s", console.last_error.c_str());
+        attroff(COLOR_PAIR(red));
+        console.last_error.clear();
     }
     else {
-        mvprintw(posy-2, posx, "       ");
+        // Command state
+        if (console.entering_draw_command) {
+            attron(COLOR_PAIR(yellow));
+            attron(A_REVERSE);
+            mvprintw(posy-2, posx, " INPUT ");
+            attroff(A_REVERSE);
+            attroff(COLOR_PAIR(yellow));
+        }
+        else {
+            mvprintw(posy-2, posx, "       ");
+        }
     }
+
 
     // Display input
-    if (console.current_input.empty() && !entering_draw_command) {
-        mvprintw(posy, posx, "Press <d>");
+    if (!error_display) {
+        if (console.current_input.empty() && !console.entering_draw_command) {
+            mvprintw(posy, posx, "Press <d>");
+        }
+        else {
+            mvprintw(posy, posx, "%s", console.current_input.c_str());
+        }
     }
-    else {
-        mvprintw(posy, posx, "%s", console.current_input.c_str());
 
-    }
-
-    if (entering_draw_command) {
+    if (console.entering_draw_command) {
         // Draw blinking cursor
-        attron(A_BLINK);
-        attron(A_REVERSE); // Should not cover text
+        attron(A_REVERSE);
         if (console.curs_offset > 0) {
             // Draw blinking letter
             mvprintw(posy, posx + console.current_input.size() - console.curs_offset, "%c", console.current_input[console.current_input.size() - console.curs_offset]);
         }
         else {
             // Just draw the cursor
+            attron(A_BLINK);
             mvprintw(posy, posx + console.current_input.size(), "█");
+            attroff(A_BLINK);
         }
         attroff(A_REVERSE);
-        attroff(A_BLINK);
     }
 
     wattron(cmd_window, COLOR_PAIR(blue));
@@ -499,71 +513,130 @@ void FileBrowser::handleMouseClick(int y, int x) {
 }
 
 FileBrowser::Console::Console() {
-    std::string chars = " \",._<>()=!&|?+-*/%:";
+    std::string chars = " \",._<>()[]=!&|?+-*/%:@$";
     for (char c : chars) allowed_chars.insert(c);
 }
 
-void FileBrowser::handleConsoleInput(int key) {
-    if (isalnum(key) || console.allowed_chars.contains(key)) {
-        if (console.curs_offset > 0) {
-            console.current_input.insert(console.current_input.size() - console.curs_offset, 1, static_cast<char>(key));
+FileBrowser::Console::DrawArgs FileBrowser::Console::store() {
+    // Remove whitespace and unneccessary characters
+    for (auto c = current_input.begin(); c != current_input.end();) {
+        if (*c == '\"' || *c == ' ') { c = current_input.erase(c); }
+        else { c++; }
+    }
+
+    // Insert into command history
+    if (!command_buffer.empty()) {
+        if (command_buffer.back() != current_input) {
+            command_buffer.push_back(current_input);
+        }
+    }
+    else {
+        command_buffer.push_back(current_input);
+    }
+    refresh();
+    curs_offset = 0;
+
+    // Tokenize string by comma
+    DrawArgs args{"", "", "", TVirtualTreePlayer::kMaxEntries, 0};
+    std::vector<std::string> tokens {""};
+    for (auto c : current_input) {
+        if (c == ',') {
+            tokens.emplace_back();
         }
         else {
-            console.current_input += static_cast<char>(key);
+            tokens.back() += c;
+        }
+    }
+
+    auto ntokens = tokens.size();
+    if (ntokens >= 1) { std::get<0>(args) = tokens[0].c_str(); }
+    if (ntokens >= 2) { std::get<1>(args) = tokens[1].c_str(); }
+    if (ntokens >= 3) { std::get<2>(args) = tokens[2].c_str(); }
+    try {
+        if (ntokens >= 4) { std::get<3>(args) = std::stoll(tokens[3]); }
+    }
+    catch (std::invalid_argument& err) {
+        last_error = std::format("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
+    }
+
+    try {
+        if (ntokens >= 5) { std::get<4>(args) = std::stoll(tokens[4]); }
+    }
+    catch (std::invalid_argument& err) { 
+        last_error = std::format("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
+    }
+
+    return args;
+}
+
+void FileBrowser::Console::handleInput(int key) {
+    if (valid_char(key)) {
+        if (curs_offset > 0) {
+            current_input.insert(current_input.size() - curs_offset, 1, static_cast<char>(key));
+        }
+        else {
+            current_input += static_cast<char>(key);
         }
     }
     else {
         switch (key) {
             case KEY_ENTER: case 10: // Execute
+                store();
                 entering_draw_command = false;
                 break;
             case 27: // ESCAPE
                 entering_draw_command = false; 
                 break;
             case KEY_LEFT: // Move input cursor to the left
-                if (console.curs_offset < console.current_input.size()) {
-                    console.curs_offset++;
+                if (curs_offset < current_input.size()) {
+                    curs_offset++;
                 }
                 break;
             case KEY_RIGHT: // Move input cursor to the right
-                if (console.curs_offset > 0) {
-                    console.curs_offset--;
+                if (curs_offset > 0) {
+                    curs_offset--;
                 }
                 break;
             case KEY_BACKSPACE: case KEY_DC:
                 {
-                    if (!console.current_input.empty()) {
-                        if (console.curs_offset > 0) {
+                    if (!current_input.empty()) {
+                        if (curs_offset > 0) {
                             // Delete inside string
-                            if (int delete_pos = console.current_input.size() - console.curs_offset; delete_pos >= 0) {
-                                console.current_input.erase(delete_pos, 1);
+                            if (int delete_pos = current_input.size() - curs_offset; delete_pos >= 0) {
+                                current_input.erase(delete_pos, 1);
                             }
                         }
                         else {
                             // Delete from back
-                            console.current_input.pop_back(); 
+                            current_input.pop_back(); 
                         }
 
                         if (key == KEY_DC) {
                             // In case of delete key, make sure cursor stays in place
-                            console.curs_offset--;
+                            curs_offset--;
                         }
                     }
                 }
                 break;
             case '\t': 
-                console.current_input += "TAB_WIP";
+                current_input += "TAB_WIP";
                 break;
         }
     }
-    refresh_cmd_window();
+}
+
+bool FileBrowser::Console::valid_char(int c) {
+    return isalnum(c) || allowed_chars.contains(c);
 }
 
 void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
-    if (entering_draw_command) {
-        handleConsoleInput(key);
+    if (console.entering_draw_command) {
+        console.handleInput(key);
+        refresh_cmd_window();
         return;
     }
+
+    bool invalid_key = false;
 
     switch (key) {
         case KEY_DOWN:
@@ -597,7 +670,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             plotHistogram();
             break;
         case 'd':
-            entering_draw_command = true;
+            console.entering_draw_command = true;
             break;
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
             handleMenuSelect();
@@ -615,8 +688,25 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
                 }
             }
             break;
+        default:
+            if (console.valid_char(key)) {
+                nonsense.push_back(key);
+            }
+            invalid_key = true;
+            break;
     }
     refresh_cmd_window();
+
+    if (!invalid_key) {
+        nonsense.clear();
+    }
+
+    if (invalid_key && nonsense.size() > 5) {
+        // User forgot to enter input mode?
+        console.current_input = nonsense;
+        nonsense.clear();
+        console.entering_draw_command = true;
+    }
 }
 
 void FileBrowser::handleResize() {

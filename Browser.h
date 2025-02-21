@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 #include "AxisTicks.h"
+#include "RtypesCore.h"
 #include "TFile.h"
 #include "TObject.h"
 #include "TTree.h"
@@ -35,7 +36,7 @@ private:
 
     void handleMenuSelect();
     void handleMouseClick(int y, int x);
-    void handleConsoleInput(int key);
+    void handleInput(int key);
 
     // Menu control
     void selection_down();
@@ -56,13 +57,28 @@ private:
 
     // Window refreshing
     void refresh_cmd_window();
-    struct Console {
+    class Console {
+    using DrawArgs = std::tuple<const char*, const char*, Option_t*, Long64_t, Long64_t>;
+    public:
         Console();
-        std::unordered_set<char> allowed_chars;
+        void handleInput(int);
+
         std::vector<std::string> command_buffer;
         std::string current_input;
         int curs_offset = 0;
-    } console;
+        bool entering_draw_command = false; // Key press is letter
+                                            //
+        bool valid_char(int);
+
+        DrawArgs current_args{"", "", "", 0, 0};
+        std::string last_error;
+
+    private:
+        // TTreePlayerArgs
+        DrawArgs store();
+        std::unordered_set<char> allowed_chars;
+    };
+    Console console;
 
     WINDOW* dir_window = nullptr;
     WINDOW* main_window = nullptr;
@@ -76,7 +92,6 @@ private:
     bool showkeys = false;
     bool showstats = true;
     bool logscale = false;
-    bool entering_draw_command = false; // Key press is letter
 
     int terminal_size_y;
     int terminal_size_x;
@@ -85,6 +100,9 @@ private:
     int bottom_height = 6;
 
     bool is_running = true; // false if program should end
+
+    // Collect user input, enter input mode if too much nonsense is entered
+    std::string nonsense;
 
     enum class NodeType { DIRECTORY, TTREE, TLEAF, HIST, UNKNOWN };
     class RootFile {
