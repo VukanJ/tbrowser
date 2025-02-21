@@ -14,7 +14,8 @@ df2 = pd.DataFrame({
     "var1" : np.random.normal(0, 1, 1000),
     "var2" : np.random.normal(1, 2, 1000),
     "var3" : np.random.normal(2, 3, 1000),
-    "var4" : np.random.normal(3, 4, 1000),
+    "small_offset" : np.random.normal(-10, 4e-5, 1000),
+    "small" : np.random.normal(1e-5, 4e-5, 1000),
 })
 
 with uproot.recreate("build/ntuple.root") as F:
@@ -24,5 +25,5 @@ with uproot.recreate("build/ntuple.root") as F:
     F["tree_2"] = df1
     F["tree_3"] = df1
     F["utility/subfolder/particles"] = df2
-    F["Words"] = "Hello World!"
+    # F["Words"] = "Hello World!"
 

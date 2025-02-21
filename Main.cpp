@@ -8,7 +8,7 @@
 #include "Browser.h"
 #include "AxisTicks.h"
 
-#define DEBUG
+#undef DEBUG
 
 extern bool resize_flag;
 

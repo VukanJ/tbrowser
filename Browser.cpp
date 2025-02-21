@@ -53,7 +53,7 @@ std::string make_superscript(int n) {
     std::string strnum = std::to_string(n);
     std::string sup;
     for (auto c : strnum) {
-        if (c == '-') { throw 1; sup += '-'; }
+        if (c == '-') { sup += "⁻"; }
         else sup += super[c - '0'];
     }
     return sup;
@@ -363,7 +363,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
     // Write numbers below axis at tick positions
     auto nchars = wx - 1;
     std::vector<char> xaxis_chars(nchars, '-');
-    if (ticks.E > 0) { attron(COLOR_PAIR(yellow)); }
+    if (ticks.E != 0) { attron(COLOR_PAIR(yellow)); }
     for (int i = 0; i < nBinsX; ++i) {
         double tickPos = ticks.values_d[i] * std::pow(10.0, ticks.E);
         int charpos = (tickPos - xmin) / rangeX * nchars;
@@ -387,7 +387,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
         attroff(A_BOLD);
         attroff(A_ITALIC);
     }
-    if (ticks.E > 0) { attroff(COLOR_PAIR(yellow)); }
+    if (ticks.E != 0) { attroff(COLOR_PAIR(yellow)); }
     
     // Draw the tick lines
     for (int i = 0; char c : xaxis_chars) {
@@ -398,7 +398,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
     // Print exponent if needed
     move(wy + 1, 0);
     clrtoeol();
-    if (ticks.E > 0) {
+    if (ticks.E != 0) {
         attron(COLOR_PAIR(yellow));
         std::string magnitude = std::format("x10{}", make_superscript(ticks.E));
         mvprintw(posy+wy+1, posx+wx-magnitude.size(), "%s", magnitude.c_str());

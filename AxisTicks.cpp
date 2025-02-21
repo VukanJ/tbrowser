@@ -10,24 +10,26 @@ AxisTicks::AxisTicks(double min, double max)
 
     // mvprintw(18, 20, "xmin %f", vmin);
     // mvprintw(19, 20, "xmax %f", vmax);
-    int nbins_approx = 10;
-    double range = (vmax - vmin);
-    double rawStep = (vmax - vmin) / nbins_approx;
-    double mag = floor(log10(range / nbins_approx));
-    /* attron(COLOR_PAIR(white_on_blue)); */
-    // mvprintw(20, 20, "range %f", range);
-    // mvprintw(21, 20, "rawStep %f", rawStep);
-    // mvprintw(22, 20, "mag %f", mag);
+    {
+        int nbins_approx = 10;
+        double range = (vmax - vmin);
+        double rawStep = (vmax - vmin) / nbins_approx;
+        double mag = floor(log10(range / nbins_approx));
+        /* attron(COLOR_PAIR(white_on_blue)); */
+        // mvprintw(20, 20, "range %f", range);
+        // mvprintw(21, 20, "rawStep %f", rawStep);
+        // mvprintw(22, 20, "mag %f", mag);
 
-    rawStep = round(rawStep / pow(10, mag)) * pow(10, mag);
-    // mvprintw(23, 20, "rawStep %f", rawStep);
-    vmin_adjust = floor(vmin / rawStep) * rawStep;
-    vmax_adjust = ceil(vmax / rawStep) * rawStep;
-    // mvprintw(24, 20, "xmin corrected %f", xmin);
-    // mvprintw(25, 20, "xmax corrected %f", xmax);
-    nticks = round((vmax_adjust - vmin_adjust) / rawStep);
-    // mvprintw(26, 20, "nbins %i", nbins);
-    /* attron(COLOR_PAIR(white_on_blue)); */
+        rawStep = round(rawStep / pow(10, mag)) * pow(10, mag);
+        // mvprintw(23, 20, "rawStep %f", rawStep);
+        vmin_adjust = floor(vmin / rawStep) * rawStep;
+        vmax_adjust = ceil(vmax / rawStep) * rawStep;
+        // mvprintw(24, 20, "xmin corrected %f", xmin);
+        // mvprintw(25, 20, "xmax corrected %f", xmax);
+        nticks = round((vmax_adjust - vmin_adjust) / rawStep);
+        // mvprintw(26, 20, "nbins %i", nbins);
+        /* attron(COLOR_PAIR(white_on_blue)); */
+    }
 
     TAxis xaxis;
     xaxis.Set(nticks, vmin_adjust, vmax_adjust);
@@ -74,6 +76,23 @@ AxisTicks::AxisTicks(double min, double max)
             E = 0;
         }
     }
+    else {
+        E = -1000;
+        for (auto v : values_d) {
+            auto mag = trunc(log10(std::abs(v)));
+            if (mag > E) {
+                E = mag;
+            }
+        }
+        if (std::abs(E) >= 2) {
+            for (auto& v : values_d) { 
+                v /= std::pow(10.0, E); 
+            }
+        }
+        else {
+            E = 0;
+        }
+    }
 
     values_str.reserve(values_d.size());
     if (integer) {
@@ -83,7 +102,7 @@ AxisTicks::AxisTicks(double min, double max)
     }
     else {
         for (auto v : values_d) {
-            values_str.push_back(std::to_string(v));
+            values_str.push_back(std::format("{:.7g}", v));
         }
     }
 
