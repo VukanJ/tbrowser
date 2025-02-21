@@ -4,6 +4,7 @@
 #include <ncurses.h>
 #include <optional>
 
+#include "AxisTicks.h"
 #include "TFile.h"
 #include "TObject.h"
 #include "TTree.h"
@@ -41,17 +42,7 @@ private:
     void toggleLogy();
     void printKeyBindings(int y, int x);
     void plotHistogram(TTree*, TLeaf*);
-    void plotAxes(double, double, double, double, int, int, int, int);
-
-    struct AxisTicks {
-        std::vector<double> values_d;
-        std::vector<long> values_i;
-        std::vector<std::string> values_str;
-        bool integer;
-        long E = 0; // Exponent
-        int nbins = 1;
-    };
-    AxisTicks niceBinning(double& vmin, double& vmax) const;
+    void plotAxes(const AxisTicks&, int, int, int, int);
 
     WINDOW* dir_window = nullptr;
     WINDOW* main_window = nullptr;
@@ -108,7 +99,6 @@ private:
     void traverse_tfile(TDirectory*, RootFile::Node*, int depth=0);
     void traverse_tfile(std::string& filename);
     void readBranches(RootFile::Node*, TTree*, int depth);
-
 };
 
 #endif // BROWSER_H

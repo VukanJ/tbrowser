@@ -1,4 +1,12 @@
 CompileFlags:
   Add:
-    - -std=c++26
+    - -std=c++2c
+    - -Wall 
+    - -Wpedantic 
+    - -Wextra 
+    - -Wunused-value 
+    - -Wunused-function 
+    - -Wunused 
+    - -Wuse-after-free 
+    - -Wshadow 
     - -I/home/vukan/root/include

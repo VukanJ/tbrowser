@@ -1,5 +1,5 @@
 #include "Browser.h"
-#include "TAxis.h"
+#include "AxisTicks.h"
 #include <cmath>
 #include <csignal>
 #include <format>
@@ -47,6 +47,17 @@ std::unordered_map<ASCII_code, ASCII> ascii_map = {
 };
 
 std::array<const char[4], 8> ascii { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█", };
+
+std::string make_superscript(int n) {
+    constexpr std::array<const char[4], 10> super { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+    std::string strnum = std::to_string(n);
+    std::string sup;
+    for (auto c : strnum) {
+        if (c == '-') { throw 1; sup += '-'; }
+        else sup += super[c - '0'];
+    }
+    return sup;
+}
 
 volatile bool resize_flag = false;
 
@@ -213,16 +224,16 @@ void FileBrowser::plotHistogram() {
 
 void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     // Get window position and size
-    int wx = 0;
-    int wy = 0;
-    getbegyx(main_window, wy, wx);
+    int wx = getbegx(main_window);
+    int wy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
-    // Get bounds
     const char* leafname = leaf->GetName();
-    auto bins_x = 2*(mainwin_x - 2); // 20=Width of browser, 4 border characters. x2: 2bins per character
-    auto bins_y = 2*(mainwin_y - 2);
+
+    // Get bounds
+    auto bins_x = 2 * mainwin_x - 4;  // Border has width of 4 bins
+    auto bins_y = 2 * mainwin_y - 4;
     auto min = tree->GetMinimum(leafname);
     auto max = tree->GetMaximum(leafname);
     if (min == max) {
@@ -230,13 +241,17 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
         min = min - 1;
         max = min + 1;
     }
-    TH1F hist("H", "H", bins_x, max, min);
+
+    const AxisTicks xaxis(min, max);
+    min = xaxis.min_adjusted();
+    max = xaxis.max_adjusted();
+
+    TH1D hist("H", "H", bins_x, min, max);
 
     tree->Project("H", leafname);
     
     auto max_height = hist.GetAt(hist.GetMaximumBin())*1.1;
 
-    double binwidth = (max - min) / bins_x;
     double pixel_y = max_height / bins_y;
 
     if (logscale) {
@@ -312,10 +327,10 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     mvprintw(wy + mainwin_y + 2, wx + 8, "<d>");
     attroff(A_REVERSE);
     mvprintw(wy + mainwin_y + 2, wx + 11, ")");
+    
+    plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
 
-    plotAxes(min, max, 0, max_height * 1.1, wy, wx, mainwin_y, mainwin_x);
     refresh();
-
 }
 
 void FileBrowser::printKeyBindings(int y, int x) {
@@ -333,159 +348,60 @@ void FileBrowser::printKeyBindings(int y, int x) {
     }
 }
 
-FileBrowser::AxisTicks FileBrowser::niceBinning(double& vmin, double& vmax) const {
-    AxisTicks axticks;
-    
-    // mvprintw(18, 20, "xmin %f", xmin);
-    // mvprintw(19, 20, "xmax %f", xmax);
-    int nbins_approx = 10;
-    double range = (vmax - vmin);
-    double rawStep = (vmax - vmin) / nbins_approx;
-    double mag = floor(log10(range / nbins_approx));
-    /* attron(COLOR_PAIR(white_on_blue)); */
-    // mvprintw(20, 20, "range %f", range);
-    // mvprintw(21, 20, "rawStep %f", rawStep);
-    // mvprintw(22, 20, "mag %f", mag);
-
-    rawStep = round(rawStep / pow(10, mag)) * pow(10, mag);
-    // mvprintw(23, 20, "rawStep %f", rawStep);
-    vmin = floor(vmin / rawStep) * rawStep;
-    vmax = ceil(vmax / rawStep) * rawStep;
-    // mvprintw(24, 20, "xmin corrected %f", xmin);
-    // mvprintw(25, 20, "xmax corrected %f", xmax);
-    int nbins = round((vmax - vmin) / rawStep);
-    // mvprintw(26, 20, "nbins %i", nbins);
-    /* attron(COLOR_PAIR(white_on_blue)); */
-
-    TAxis xaxis;
-    xaxis.Set(nbins, vmin, vmax);
-    //xaxis.SetNdivisions(510); // 5 major, 10 minor
-    //yaxis.SetNdivisions(510); // 5 major, 10 minor
-    int nBinsX = xaxis.GetNbins();
-    /* for (int i = 0; i <= nBinsX; ++i) { */
-    /*     double tickPos = xaxis.GetBinLowEdge(i + 1); */
-    /*     mvprintw(10+i, 40, " xTick %i at %f", i, tickPos); */
-    /* } */
-    /* for (int i = 0; i <= nBinsY; ++i) { */
-    /*     double tickPos = yaxis.GetBinLowEdge(i + 1); */
-    /*     mvprintw(10+i, 70, "yTick %i at %f", i, tickPos); */
-    /* } */
-    /* attroff(COLOR_PAIR(white_on_blue)); */
-
-    // Collect ticks
-    for (int i = 0; i <= nBinsX; ++i) {
-        double tickPos = xaxis.GetBinLowEdge(i + 1);
-        axticks.values_d.push_back(tickPos);
-        axticks.values_i.push_back(lround(tickPos));
-    }
-
-    axticks.nbins = axticks.values_i.size();
-    axticks.integer = std::all_of(axticks.values_d.begin(), axticks.values_d.end(), 
-            [](double val){ return trunc(val) == val; });
-
-    auto count_0 = [](long I){
-        auto c = 0;
-        while (I % 10 == 0 && I != 0) { I /= 10; c++; }
-        return c;
-    };
-
-    if (axticks.integer) {
-        // Compute exponent
-        int minNumZero = 10000;
-        for (int i = 0; auto v : axticks.values_i) {
-            int n0 = count_0(v);
-            mvprintw(20 + ++i, 80, "%ld %i", v, n0);
-            if (v != 0 && n0 < minNumZero) {
-                minNumZero = n0;
-            }
-        }
-        if (minNumZero >= 3) {
-            axticks.E = minNumZero;
-            for (auto& v : axticks.values_i) { v /= std::pow<long>(10, axticks.E); }
-            for (int j = 0; auto& v : axticks.values_d) { v = axticks.values_i[j++]; }
-        }
-        else {
-            axticks.E = 0;
-        }
-    }
-
-    if (axticks.integer) {
-        axticks.values_str.reserve(axticks.values_d.size());
-        for (auto v : axticks.values_i) {
-            axticks.values_str.push_back(std::to_string(v));
-        }
-    }
-    else {
-    }
-
-    return axticks;
-}
-
-void FileBrowser::plotAxes(double xmin, double xmax, double ymin, double ymax, 
-                           int posy, int posx, int wy, int wx) 
+void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, int wx) 
 {
+    // Clear line below plot
+    move(wy, 0);
+    clrtoeol();
 
-    mvprintw(18, 30, "xmin %f", xmin);
-    mvprintw(19, 30, "xmax %f", xmax);
-    auto xbinning = niceBinning(xmin, xmax);
-    mvprintw(20, 30, "xmin' %f", xmin);
-    mvprintw(21, 30, "xmax' %f", xmax);
-    for (int i = 0; auto x : xbinning.values_d) {
-        mvprintw(21+ ++i, 30, "%f", x);
-    }
-    auto nBinsX = xbinning.nbins;
+    double xmin = ticks.min_adjusted();
+    double xmax = ticks.max_adjusted();
+
+    auto nBinsX = ticks.nticks;
     double rangeX = xmax - xmin;
 
+    // Write numbers below axis at tick positions
     auto nchars = wx - 1;
     std::vector<char> xaxis_chars(nchars, '-');
-
-    move(posy + wy, posx);
-    clrtoeol();
-    if (xbinning.E > 0) { attron(COLOR_PAIR(yellow)); }
+    if (ticks.E > 0) { attron(COLOR_PAIR(yellow)); }
     for (int i = 0; i < nBinsX; ++i) {
-        double tickPos = xbinning.values_d[i] * std::pow(10.0, xbinning.E);
+        double tickPos = ticks.values_d[i] * std::pow(10.0, ticks.E);
         int charpos = (tickPos - xmin) / rangeX * nchars;
         if (charpos < 0) continue;
         xaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
 
         attron(A_ITALIC);
         attron(A_BOLD);
-        if (trunc(tickPos) == tickPos) {
-            long tick = xbinning.values_i[i];
-            int ticklen = xbinning.values_str[i].size();
-            if (tick < 0) {
-                ticklen++;
-            }
-
+        if (ticks.integer) {
+            // write centered numbers below
+            long tick = ticks.values_i[i];
+            int ticklen = ticks.values_str[i].size();
             mvprintw(posy + wy, posx + 1 + charpos - ticklen / 2, "%ld", tick);
         }
         else {
-            // mvprintw(posy + wy, posx + 1 + charpos - 2, "%.3f", tickPos);
+            // write centered numbers below
+            auto num = ticks.values_str[i];
+            int ticklen = num.size();
+            mvprintw(posy + wy, posx + 1 + charpos - ticklen / 2, "%s", num.c_str());
         }
         attroff(A_BOLD);
         attroff(A_ITALIC);
     }
-    if (xbinning.E > 0) { attroff(COLOR_PAIR(yellow)); }
+    if (ticks.E > 0) { attroff(COLOR_PAIR(yellow)); }
     
+    // Draw the tick lines
     for (int i = 0; char c : xaxis_chars) {
-        if (c == '-') {
-            mvprintw(posy + wy - 1, posx + 1 + i, "─");
-        }
-        else if (c == '+') {
-            mvprintw(posy + wy - 1, posx + 1 + i, "┼");
-        }
-    
-        i++;
+        mvprintw(posy + wy - 1, posx + 1 + i++, c == '+' ? "┼" : "─"); 
     }
     mvprintw(posy + wy - 1, posx + nchars, "┘");
 
     // Print exponent if needed
-    if (xbinning.E > 0) {
+    move(wy + 1, 0);
+    clrtoeol();
+    if (ticks.E > 0) {
         attron(COLOR_PAIR(yellow));
-        attron(A_BOLD);
-        std::string magnitude = "x10^" + std::to_string(xbinning.E);
+        std::string magnitude = std::format("x10{}", make_superscript(ticks.E));
         mvprintw(posy+wy+1, posx+wx-magnitude.size(), "%s", magnitude.c_str());
-        attroff(A_BOLD);
         attroff(COLOR_PAIR(yellow));
     }
 }
@@ -661,6 +577,9 @@ void FileBrowser::RootFile::updateDisplayList(Node* mothernode, int nesting) {
             case NodeType::HIST:
                 displayList.emplace_back(node->type, m_histos_th1d[node->index]->GetName(), node.get());
                 break;
+            case NodeType::UNKNOWN:
+                displayList.emplace_back(node->type, m_unclassified[node->index]->GetName(), node.get());
+                break;
             default: break;
         }
     }
@@ -715,34 +634,23 @@ std::string FileBrowser::RootFile::toString(Node* node) {
     std::string descr;
     std::string name;
     std::string title;
-    auto make_name = [&name, &title](TObject* obj){
+    std::string classname;
+    auto make_name = [&name, &title, &classname](TObject* obj){
         name = obj->GetName();
         title = obj->GetTitle();
+        classname = obj->ClassName();
         if (name != title) {
-            return name + " \"" + title + "\"";
+            return std::format("({}) {} \"{}\"", classname, name, title);
         }
-        return name;
+        return std::format("({}) {}", classname, name, title);
     };
     switch (node->type) {
-        case NodeType::DIRECTORY:
-            descr = "TDirectory " + make_name(m_directories[node->index]);
-            break;
-        case NodeType::TTREE:
-            descr = "TTree " + make_name(m_trees[node->index]);
-            break;
-        case NodeType::TLEAF:
-            descr = "TBranch " + make_name(m_leaves[node->index]);
-            break;
-        case NodeType::HIST:
-            descr = "Hist " + make_name(m_histos_th1d[node->index]);
-            break;
-        case NodeType::UNKNOWN:
-            descr = "??? " + make_name(m_histos_th1d[node->index]);
-            break;
+        case NodeType::DIRECTORY: descr = make_name(m_directories[node->index]);  break;
+        case NodeType::TTREE:     descr = make_name(m_trees[node->index]);        break;
+        case NodeType::TLEAF:     descr = make_name(m_leaves[node->index]);       break;
+        case NodeType::HIST:      descr = make_name(m_histos_th1d[node->index]);  break;
+        case NodeType::UNKNOWN:   descr = make_name(m_unclassified[node->index]); break;
     }
 
     return descr;
 }
-
-
-

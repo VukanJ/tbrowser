@@ -6,8 +6,9 @@
 
 #include <ncurses.h>
 #include "Browser.h"
+#include "AxisTicks.h"
 
-#undef DEBUG
+#define DEBUG
 
 extern bool resize_flag;
 
@@ -15,8 +16,9 @@ int main (int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    FileBrowser b;
-    b.loadFile("./build/ntuple.root");
+    /* FileBrowser b; */
+    /* b.loadFile("./build/ntuple.root"); */
+    AxisTicks t(0, 3e-4);
     return EXIT_SUCCESS;
 #else
     if (argc == 2) {
@@ -32,7 +34,6 @@ int main (int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 #endif
-
     // Initial window setup
     bool running = true;
     int nredraws = 0;
