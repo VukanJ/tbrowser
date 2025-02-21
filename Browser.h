@@ -3,16 +3,15 @@
 
 #include <ncurses.h>
 #include <optional>
-#include <unordered_set>
 
 #include "AxisTicks.h"
-#include "RtypesCore.h"
 #include "TFile.h"
 #include "TObject.h"
 #include "TTree.h"
 #include "TKey.h"
 #include "TLeaf.h"
 #include "TH1.h"
+#include "Console.h"
 
 class FileBrowser final {
 public:
@@ -37,6 +36,7 @@ private:
     void handleMenuSelect();
     void handleMouseClick(int y, int x);
     void handleInput(int key);
+    bool isClickInWindow(WINDOW*&, int y, int x) const;
 
     // Menu control
     void selection_down();
@@ -57,27 +57,6 @@ private:
 
     // Window refreshing
     void refresh_cmd_window();
-    class Console {
-    using DrawArgs = std::tuple<const char*, const char*, Option_t*, Long64_t, Long64_t>;
-    public:
-        Console();
-        void handleInput(int);
-
-        std::vector<std::string> command_buffer;
-        std::string current_input;
-        int curs_offset = 0;
-        bool entering_draw_command = false; // Key press is letter
-                                            //
-        bool valid_char(int);
-
-        DrawArgs current_args{"", "", "", 0, 0};
-        std::string last_error;
-
-    private:
-        // TTreePlayerArgs
-        DrawArgs store();
-        std::unordered_set<char> allowed_chars;
-    };
     Console console;
 
     WINDOW* dir_window = nullptr;

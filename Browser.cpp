@@ -4,7 +4,7 @@
 #include <cmath>
 #include <csignal>
 #include <format>
-#include <locale>
+#include <limits>
 #include <memory>
 #include <algorithm>
 #include <ncurses.h>
@@ -500,136 +500,48 @@ void FileBrowser::readBranches(RootFile::Node* node, TTree* tree, int depth) {
     }
 }
 
-void FileBrowser::handleMouseClick(int y, int x) {
-    // Is inside window?
+bool FileBrowser::isClickInWindow(WINDOW*& win, int y, int x) const {
     int posy, posx;
     int sizey, sizex;
-    getmaxyx(dir_window, sizey, sizex);
-    getbegyx(dir_window, posy, posx);
+    getmaxyx(win, sizey, sizex);
+    getbegyx(win, posy, posx);
     if (x > posx && x < posx + sizex - 1 && y > posy && y < posy + sizey - 1) {
+        return true;
+    }
+
+    return false;
+}
+
+void FileBrowser::handleMouseClick(int y, int x) {
+    // Clicked inside window?
+    if (isClickInWindow(dir_window, y, x)) {
+        int posy = getbegy(dir_window);
         selected_pos = y - posy - 1;
         handleMenuSelect();
     }
-}
-
-FileBrowser::Console::Console() {
-    std::string chars = " \",._<>()[]=!&|?+-*/%:@$";
-    for (char c : chars) allowed_chars.insert(c);
-}
-
-FileBrowser::Console::DrawArgs FileBrowser::Console::store() {
-    // Remove whitespace and unneccessary characters
-    for (auto c = current_input.begin(); c != current_input.end();) {
-        if (*c == '\"' || *c == ' ') { c = current_input.erase(c); }
-        else { c++; }
+    else if (isClickInWindow(cmd_window, y, x)) {
+        console.entering_draw_command = true;
+        refresh_cmd_window();
     }
-
-    // Insert into command history
-    if (!command_buffer.empty()) {
-        if (command_buffer.back() != current_input) {
-            command_buffer.push_back(current_input);
-        }
-    }
-    else {
-        command_buffer.push_back(current_input);
-    }
-    refresh();
-    curs_offset = 0;
-
-    // Tokenize string by comma
-    DrawArgs args{"", "", "", TVirtualTreePlayer::kMaxEntries, 0};
-    std::vector<std::string> tokens {""};
-    for (auto c : current_input) {
-        if (c == ',') {
-            tokens.emplace_back();
-        }
-        else {
-            tokens.back() += c;
-        }
-    }
-
-    auto ntokens = tokens.size();
-    if (ntokens >= 1) { std::get<0>(args) = tokens[0].c_str(); }
-    if (ntokens >= 2) { std::get<1>(args) = tokens[1].c_str(); }
-    if (ntokens >= 3) { std::get<2>(args) = tokens[2].c_str(); }
-    try {
-        if (ntokens >= 4) { std::get<3>(args) = std::stoll(tokens[3]); }
-    }
-    catch (std::invalid_argument& err) {
-        last_error = std::format("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
-    }
-
-    try {
-        if (ntokens >= 5) { std::get<4>(args) = std::stoll(tokens[4]); }
-    }
-    catch (std::invalid_argument& err) { 
-        last_error = std::format("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
-    }
-
-    return args;
-}
-
-void FileBrowser::Console::handleInput(int key) {
-    if (valid_char(key)) {
-        if (curs_offset > 0) {
-            current_input.insert(current_input.size() - curs_offset, 1, static_cast<char>(key));
-        }
-        else {
-            current_input += static_cast<char>(key);
-        }
-    }
-    else {
-        switch (key) {
-            case KEY_ENTER: case 10: // Execute
-                store();
-                entering_draw_command = false;
-                break;
-            case 27: // ESCAPE
-                entering_draw_command = false; 
-                break;
-            case KEY_LEFT: // Move input cursor to the left
-                if (curs_offset < current_input.size()) {
-                    curs_offset++;
-                }
-                break;
-            case KEY_RIGHT: // Move input cursor to the right
-                if (curs_offset > 0) {
-                    curs_offset--;
-                }
-                break;
-            case KEY_BACKSPACE: case KEY_DC:
-                {
-                    if (!current_input.empty()) {
-                        if (curs_offset > 0) {
-                            // Delete inside string
-                            if (int delete_pos = current_input.size() - curs_offset; delete_pos >= 0) {
-                                current_input.erase(delete_pos, 1);
-                            }
-                        }
-                        else {
-                            // Delete from back
-                            current_input.pop_back(); 
-                        }
-
-                        if (key == KEY_DC) {
-                            // In case of delete key, make sure cursor stays in place
-                            curs_offset--;
-                        }
-                    }
-                }
-                break;
-            case '\t': 
-                current_input += "TAB_WIP";
-                break;
-        }
-    }
-}
-
-bool FileBrowser::Console::valid_char(int c) {
-    return isalnum(c) || allowed_chars.contains(c);
 }
 
 void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
+    if (key == KEY_MOUSE) {
+        // Mouse clicks take precedence over console input mode. Always handled
+        if (getmouse(&mouse_event) == OK) {
+            if (mouse_event.bstate == BUTTON1_PRESSED) {
+                handleMouseClick(mouse_event.y, mouse_event.x);
+            }
+            else if (mouse_event.bstate == BUTTON4_PRESSED) {
+                selection_up();
+            }
+            else if (mouse_event.bstate == BUTTON5_PRESSED) {
+                selection_down();
+            }
+        }
+        return;
+    }
+
     if (console.entering_draw_command) {
         console.handleInput(key);
         refresh_cmd_window();
@@ -674,19 +586,6 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             break;
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
             handleMenuSelect();
-            break;
-        case KEY_MOUSE:
-            if (getmouse(&mouse_event) == OK) {
-                if (mouse_event.bstate == BUTTON1_PRESSED) {
-                    handleMouseClick(mouse_event.y, mouse_event.x);
-                }
-                else if (mouse_event.bstate == BUTTON4_PRESSED) {
-                    selection_up();
-                }
-                else if (mouse_event.bstate == BUTTON5_PRESSED) {
-                    selection_down();
-                }
-            }
             break;
         default:
             if (console.valid_char(key)) {

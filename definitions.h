@@ -45,21 +45,21 @@ inline std::unordered_map<ASCII_code, ASCII> ascii_map = {
 #endif
 
 #if USE_UNICODE == 1
-#define ASCII_SUP_MINUS "⁻"
-#define SYMB_FOLDER_OPEN ""
-#define SYMB_FOLDER_CLOSED ""
-#define SYMB_TTREE ""
-#define SYMB_TLEAF ""
-#define SYMB_THIST ""
-#define SYMB_TUNKNOWN "?"
+    #define ASCII_SUP_MINUS "⁻"
+    #define SYMB_FOLDER_OPEN ""
+    #define SYMB_FOLDER_CLOSED ""
+    #define SYMB_TTREE ""
+    #define SYMB_TLEAF ""
+    #define SYMB_THIST ""
+    #define SYMB_TUNKNOWN "?"
 #else 
-#define ASCII_SUP_MINUS "-"
-#define SYMB_FOLDER_OPEN "f"
-#define SYMB_FOLDER_CLOSED "F"
-#define SYMB_TTREE "T"
-#define SYMB_TLEAF ","
-#define SYMB_THIST "h"
-#define SYMB_TUNKNOWN "?"
+    #define ASCII_SUP_MINUS "-"
+    #define SYMB_FOLDER_OPEN "f"
+    #define SYMB_FOLDER_CLOSED "F"
+    #define SYMB_TTREE "T"
+    #define SYMB_TLEAF ","
+    #define SYMB_THIST "h"
+    #define SYMB_TUNKNOWN "?"
 #endif // USE_UNICODE
 
 #endif // DEFINITIONS_H
