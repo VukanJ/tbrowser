@@ -9,73 +9,15 @@
 #include <string>
 #include <unistd.h>
 #include <unordered_map>
-
-enum ASCII : std::uint8_t {
-    LOWER_LEFT,
-    LOWER_RIGHT,
-    LOWER_HALF,
-    LEFT_HALF,
-    RIGHT_HALF,
-    STAIRS_LEFT,
-    STAIRS_RIGHT,
-    FULL_BLOCK,
-    VOID,
-};
-
-enum ASCII_code : std::uint8_t {
-    C_LOWER_LEFT   = 0b1000,
-    C_LOWER_RIGHT  = 0b0100,
-    C_LOWER_HALF   = 0b1100,
-    C_LEFT_HALF    = 0b1010,
-    C_RIGHT_HALF   = 0b0101,
-    C_STAIRS_LEFT  = 0b1110,
-    C_STAIRS_RIGHT = 0b1101,
-    C_FULL_BLOCK   = 0b1111,
-    C_VOID         = 0b0000,
-};
-
-std::unordered_map<ASCII_code, ASCII> ascii_map = {
-    {C_VOID,         VOID},
-    {C_LOWER_LEFT,   LOWER_LEFT},
-    {C_LOWER_RIGHT,  LOWER_RIGHT},
-    {C_LOWER_HALF,   LOWER_HALF},
-    {C_LEFT_HALF,    LEFT_HALF},
-    {C_RIGHT_HALF,   RIGHT_HALF},
-    {C_STAIRS_LEFT,  STAIRS_LEFT},
-    {C_STAIRS_RIGHT, STAIRS_RIGHT},
-    {C_FULL_BLOCK,   FULL_BLOCK},
-};
-
-#ifndef USE_UNICODE
-#define USE_UNICODE 1
-#endif
-
-#if USE_UNICODE
-#define ASCII_SUP_MINUS "⁻"
-#define SYMB_FOLDER_OPEN ""
-#define SYMB_FOLDER_CLOSED ""
-#define SYMB_TTREE ""
-#define SYMB_TLEAF ""
-#define SYMB_THIST ""
-#define SYMB_TUNKNOWN "?"
-#else 
-#define ASCII_SUP_MINUS "-"
-#define SYMB_FOLDER_OPEN "f"
-#define SYMB_FOLDER_CLOSED "F"
-#define SYMB_TTREE "T"
-#define SYMB_TLEAF ","
-#define SYMB_THIST "h"
-#define SYMB_TUNKNOWN "?"
-#endif // USE_UNICODE
+#include "definitions.h"
 
 constexpr std::array<const char[4], 8> ascii { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█" };
 
 std::string make_superscript(int n) {
 #if USE_UNICODE
-    std::string strnum = std::to_string(n);
     std::string sup;
     constexpr std::array<const char[4], 10> super { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
-    for (auto c : strnum) {
+    for (auto c : std::to_string(n)) {
         sup += c == '-' ? ASCII_SUP_MINUS : super[c - '0'];
     }
     return sup;
@@ -90,12 +32,16 @@ FileBrowser::FileBrowser() {
     init_ncurses();
     int sizex = getmaxx(stdscr);
     int sizey = getmaxy(stdscr);
-    createWindow(main_window, sizey - bottom_height, sizex - menu_width, menu_width, 0);
+    createWindow(main_window, sizey - bottom_height, sizex - menu_width, 0, menu_width);
     createWindow(dir_window, sizey - bottom_height, menu_width, 0, 0);
+    createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 2, 20 + 5);
 
     refresh();
+    box(dir_window, 0, 0);
     box(main_window, 0, 0);
     wrefresh(main_window);
+
+    refresh_cmd_window();
 
     getmaxyx(stdscr, terminal_size_y, terminal_size_x);
 }
@@ -106,6 +52,7 @@ FileBrowser::~FileBrowser() {
             m_tfile->Close();
         }
     }
+    delwin(cmd_window);
     delwin(main_window);
     delwin(dir_window);
     endwin();
@@ -154,7 +101,7 @@ void FileBrowser::printDirectories() {
         color col = white;
         int attr = A_NORMAL;
         switch (type) {
-            case NodeType::DIRECTORY: 
+            case NodeType::DIRECTORY:
                 if (node->directory_open) 
                     { entry_label = std::format("{} {}", SYMB_FOLDER_OPEN, name); }
                 else
@@ -347,11 +294,11 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
     printKeyBindings(wy + line++, wx + mainwin_x - 30);
 
-    mvprintw(wy + mainwin_y + 2, wx + 1, "->Draw(");
-    attron(A_REVERSE);
-    mvprintw(wy + mainwin_y + 2, wx + 8, "<d>");
-    attroff(A_REVERSE);
-    mvprintw(wy + mainwin_y + 2, wx + 11, ")");
+    //mvprintw(wy + mainwin_y + 2, wx + 1, "->Draw(");
+    //attron(A_REVERSE);
+    //mvprintw(wy + mainwin_y + 2, wx + 8, "<d>");
+    //attroff(A_REVERSE);
+    //mvprintw(wy + mainwin_y + 2, wx + 11, ")");
     
     plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
 
@@ -435,6 +382,57 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
     }
 }
 
+void FileBrowser::refresh_cmd_window() {
+    int posx = getbegx(cmd_window) + 1;
+    int posy = getbegy(cmd_window) + 1;
+    // CMD hint
+    attron(COLOR_PAIR(red));
+    mvprintw(posy, posx - 6, "Draw(");
+    attroff(COLOR_PAIR(red));
+
+    // Command state
+    if (entering_draw_command) {
+        attron(COLOR_PAIR(yellow));
+        attron(A_REVERSE);
+        mvprintw(posy-2, posx, " INPUT ");
+        attroff(A_REVERSE);
+        attroff(COLOR_PAIR(yellow));
+    }
+    else {
+        mvprintw(posy-2, posx, "       ");
+    }
+
+    // Display input
+    if (console.current_input.empty() && !entering_draw_command) {
+        mvprintw(posy, posx, "Press <d>");
+    }
+    else {
+        mvprintw(posy, posx, "%s", console.current_input.c_str());
+
+    }
+
+    if (entering_draw_command) {
+        // Draw blinking cursor
+        attron(A_BLINK);
+        attron(A_REVERSE); // Should not cover text
+        if (console.curs_offset > 0) {
+            // Draw blinking letter
+            mvprintw(posy, posx + console.current_input.size() - console.curs_offset, "%c", console.current_input[console.current_input.size() - console.curs_offset]);
+        }
+        else {
+            // Just draw the cursor
+            mvprintw(posy, posx + console.current_input.size(), "█");
+        }
+        attroff(A_REVERSE);
+        attroff(A_BLINK);
+    }
+
+    wattron(cmd_window, COLOR_PAIR(blue));
+    box(cmd_window, 0, 0);
+    wattroff(cmd_window, COLOR_PAIR(blue));
+    wrefresh(cmd_window);
+}
+
 void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int depth) {
     TList* keys = dir->GetListOfKeys();
     if (!keys) return;
@@ -500,7 +498,57 @@ void FileBrowser::handleMouseClick(int y, int x) {
     }
 }
 
+FileBrowser::InputConsoleState::InputConsoleState() {
+    std::string chars = " \",._<>()=!&|?+-*/%:";
+    for (char c : chars) allowed_chars.insert(c);
+}
+
+void FileBrowser::handleConsoleInput(int key) {
+    if (isalnum(key) || console.allowed_chars.contains(key)) {
+        if (console.curs_offset > 0) {
+            console.current_input.insert(console.current_input.size() - console.curs_offset, 1, static_cast<char>(key));
+        }
+        else {
+            console.current_input += (char)key;
+        }
+    }
+    else {
+        switch (key) {
+            case KEY_ENTER: case 10: 
+                entering_draw_command = false; 
+                break;
+            case 27: // ESCAPE
+                entering_draw_command = false; 
+                break;
+            case KEY_LEFT: // Move input cursor to the left
+                if (console.curs_offset < console.current_input.size()) {
+                    console.curs_offset++;
+                }
+                break;
+            case KEY_RIGHT: // Move input cursor to the right
+                if (console.curs_offset > 0) {
+                    console.curs_offset--;
+                }
+                break;
+            case KEY_BACKSPACE: 
+                if (!console.current_input.empty()) {
+                    console.current_input.pop_back(); 
+                }
+                break;
+            case '\t': 
+                console.current_input += "TAB_WIP";
+                break;
+        }
+    }
+    refresh_cmd_window();
+}
+
 void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
+    if (entering_draw_command) {
+        handleConsoleInput(key);
+        return;
+    }
+
     switch (key) {
         case KEY_DOWN:
             selection_down();
@@ -529,6 +577,9 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             toggleLogy();
             plotHistogram();
             break;
+        case 'd':
+            entering_draw_command = true;
+            break;
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
             handleMenuSelect();
             break;
@@ -546,6 +597,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             }
             break;
     }
+    refresh_cmd_window();
 }
 
 void FileBrowser::handleResize() {
@@ -560,7 +612,7 @@ void FileBrowser::handleResize() {
         terminal_size_y = sizey;
         endwin();
         refresh();
-        createWindow(main_window, terminal_size_y - bottom_height, terminal_size_x - menu_width, menu_width, 0);
+        createWindow(main_window, terminal_size_y - bottom_height, terminal_size_x - menu_width, 0, menu_width);
         createWindow(dir_window, terminal_size_y - bottom_height, menu_width, 0, 0);
     }
     else {
@@ -568,7 +620,7 @@ void FileBrowser::handleResize() {
     }
 }
 
-void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y) {
+void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, int pos_x) {
     if (win) {
         delwin(win);
     }

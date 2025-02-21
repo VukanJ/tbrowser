@@ -3,6 +3,7 @@
 
 #include <ncurses.h>
 #include <optional>
+#include <unordered_set>
 
 #include "AxisTicks.h"
 #include "TFile.h"
@@ -28,24 +29,43 @@ private:
         blue=1, green, red, white, yellow, white_on_blue
     };
     static void init_ncurses();
-    static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_x, int pos_y);
+    static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, int pos_x);
 
     void handleMenuSelect();
-
     void handleMouseClick(int y, int x);
+    void handleConsoleInput(int key);
+
+    // Menu control
     void selection_down();
     void selection_up();
     void goTop();
     void goBottom();
+
+    // plot option toggles
     void toggleKeyBindings();
     void toggleStatsBox();
     void toggleLogy();
+
     void printKeyBindings(int y, int x);
+
+    // plot commands
     void plotHistogram(TTree*, TLeaf*);
     void plotAxes(const AxisTicks&, int, int, int, int);
 
+    // Window refreshing
+    void refresh_cmd_window();
+    struct InputConsoleState {
+        InputConsoleState();
+        std::unordered_set<char> allowed_chars;
+        std::vector<std::string> command_buffer;
+        std::string current_input;
+        int curs_offset = 0;
+    } console;
+
     WINDOW* dir_window = nullptr;
     WINDOW* main_window = nullptr;
+    WINDOW* cmd_window = nullptr;
+
     std::unique_ptr<TFile> m_tfile;
     int mainwin_x;
     int mainwin_y;
@@ -54,6 +74,7 @@ private:
     bool showkeys = false;
     bool showstats = true;
     bool logscale = false;
+    bool entering_draw_command = false; // Key press is letter
 
     int terminal_size_y;
     int terminal_size_x;

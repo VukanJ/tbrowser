@@ -18,7 +18,12 @@ add_executable(${PROGRAM} Main.cpp Browser.cpp AxisTicks.cpp)
 # Link against ncurses and ROOT
 target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})
 
-add_compile_definitions(USE_UNICODE=${USE_UNICODE})
+if(DEFINED USE_UNICODE)
+    add_compile_definitions(USE_UNICODE=${USE_UNICODE})
+else()
+    # Default = Unicode
+    add_compile_definitions(USE_UNICODE=1)
+endif()
 
 # COMPILER OPTIONS
 if(NOT CMAKE_BUILD_TYPE)
