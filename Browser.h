@@ -24,6 +24,8 @@ public:
     void handleResize();
     void plotHistogram();
 
+    bool isRunning() const { return is_running; };
+
 private:
     enum color {
         blue=1, green, red, white, yellow, white_on_blue
@@ -54,8 +56,8 @@ private:
 
     // Window refreshing
     void refresh_cmd_window();
-    struct InputConsoleState {
-        InputConsoleState();
+    struct Console {
+        Console();
         std::unordered_set<char> allowed_chars;
         std::vector<std::string> command_buffer;
         std::string current_input;
@@ -81,6 +83,8 @@ private:
 
     int menu_width = 20;
     int bottom_height = 6;
+
+    bool is_running = true; // false if program should end
 
     enum class NodeType { DIRECTORY, TTREE, TLEAF, HIST, UNKNOWN };
     class RootFile {

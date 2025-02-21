@@ -498,7 +498,7 @@ void FileBrowser::handleMouseClick(int y, int x) {
     }
 }
 
-FileBrowser::InputConsoleState::InputConsoleState() {
+FileBrowser::Console::Console() {
     std::string chars = " \",._<>()=!&|?+-*/%:";
     for (char c : chars) allowed_chars.insert(c);
 }
@@ -509,13 +509,13 @@ void FileBrowser::handleConsoleInput(int key) {
             console.current_input.insert(console.current_input.size() - console.curs_offset, 1, static_cast<char>(key));
         }
         else {
-            console.current_input += (char)key;
+            console.current_input += static_cast<char>(key);
         }
     }
     else {
         switch (key) {
-            case KEY_ENTER: case 10: 
-                entering_draw_command = false; 
+            case KEY_ENTER: case 10: // Execute
+                entering_draw_command = false;
                 break;
             case 27: // ESCAPE
                 entering_draw_command = false; 
@@ -530,9 +530,25 @@ void FileBrowser::handleConsoleInput(int key) {
                     console.curs_offset--;
                 }
                 break;
-            case KEY_BACKSPACE: 
-                if (!console.current_input.empty()) {
-                    console.current_input.pop_back(); 
+            case KEY_BACKSPACE: case KEY_DC:
+                {
+                    if (!console.current_input.empty()) {
+                        if (console.curs_offset > 0) {
+                            // Delete inside string
+                            if (int delete_pos = console.current_input.size() - console.curs_offset; delete_pos >= 0) {
+                                console.current_input.erase(delete_pos, 1);
+                            }
+                        }
+                        else {
+                            // Delete from back
+                            console.current_input.pop_back(); 
+                        }
+
+                        if (key == KEY_DC) {
+                            // In case of delete key, make sure cursor stays in place
+                            console.curs_offset--;
+                        }
+                    }
                 }
                 break;
             case '\t': 
@@ -555,6 +571,9 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             break;
         case KEY_UP:
             selection_up();
+            break;
+        case 'q':
+            is_running = false;
             break;
         case 'g':
             goTop();

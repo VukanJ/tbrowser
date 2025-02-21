@@ -35,7 +35,6 @@ int main (int argc, char* argv[]) {
     }
 #endif
     // Initial window setup
-    bool running = true;
     int nredraws = 0;
 
     FileBrowser browser;
@@ -43,7 +42,7 @@ int main (int argc, char* argv[]) {
 
     MEVENT mouse_event;
 
-    while (running) {
+    while (browser.isRunning()) {
         browser.printDirectories();
 
         int input = getch();
@@ -53,12 +52,7 @@ int main (int argc, char* argv[]) {
             browser.handleResize();
         }
 
-        if (input == 'q') {
-            running = false;
-        }
-        else {
-            browser.handleInputEvent(mouse_event, input);
-        }
+        browser.handleInputEvent(mouse_event, input);
     }
 
     return EXIT_SUCCESS;
