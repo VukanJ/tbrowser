@@ -46,17 +46,42 @@ std::unordered_map<ASCII_code, ASCII> ascii_map = {
     {C_FULL_BLOCK,   FULL_BLOCK},
 };
 
-std::array<const char[4], 8> ascii { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█", };
+#ifndef USE_UNICODE
+#define USE_UNICODE 1
+#endif
+
+#if USE_UNICODE
+#define ASCII_SUP_MINUS "⁻"
+#define SYMB_FOLDER_OPEN ""
+#define SYMB_FOLDER_CLOSED ""
+#define SYMB_TTREE ""
+#define SYMB_TLEAF ""
+#define SYMB_THIST ""
+#define SYMB_TUNKNOWN "?"
+#else 
+#define ASCII_SUP_MINUS "-"
+#define SYMB_FOLDER_OPEN "f"
+#define SYMB_FOLDER_CLOSED "F"
+#define SYMB_TTREE "T"
+#define SYMB_TLEAF ","
+#define SYMB_THIST "h"
+#define SYMB_TUNKNOWN "?"
+#endif // USE_UNICODE
+
+constexpr std::array<const char[4], 8> ascii { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█" };
 
 std::string make_superscript(int n) {
-    constexpr std::array<const char[4], 10> super { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+#if USE_UNICODE
     std::string strnum = std::to_string(n);
     std::string sup;
+    constexpr std::array<const char[4], 10> super { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
     for (auto c : strnum) {
-        if (c == '-') { sup += "⁻"; }
-        else sup += super[c - '0'];
+        sup += c == '-' ? ASCII_SUP_MINUS : super[c - '0'];
     }
     return sup;
+#else
+    return std::to_string(n);
+#endif
 }
 
 volatile bool resize_flag = false;
@@ -64,7 +89,7 @@ volatile bool resize_flag = false;
 FileBrowser::FileBrowser() {
     init_ncurses();
     int sizex = getmaxx(stdscr);
-    int sizey = getmaxy(stdscr);;
+    int sizey = getmaxy(stdscr);
     createWindow(main_window, sizey - bottom_height, sizex - menu_width, menu_width, 0);
     createWindow(dir_window, sizey - bottom_height, menu_width, 0, 0);
 
@@ -131,15 +156,15 @@ void FileBrowser::printDirectories() {
         switch (type) {
             case NodeType::DIRECTORY: 
                 if (node->directory_open) 
-                    { entry_label = " " + name; }
+                    { entry_label = std::format("{} {}", SYMB_FOLDER_OPEN, name); }
                 else
-                    { entry_label = " " + name; }
+                    { entry_label = std::format("{} {}", SYMB_FOLDER_CLOSED, name); }
                 col = yellow;
                 break;
-            case NodeType::TLEAF:   entry_label = " " + name; attr = A_ITALIC; break;
-            case NodeType::TTREE:   entry_label = " " + name; col = green; attr = A_BOLD; break;
-            case NodeType::HIST:    entry_label = " " + name; col = blue; attr = A_ITALIC; break;
-            case NodeType::UNKNOWN: entry_label = "? " + name; col = red; break;
+            case NodeType::TLEAF:   entry_label = std::format("{} {}", SYMB_TLEAF, name); attr = A_ITALIC; break;
+            case NodeType::TTREE:   entry_label = std::format("{} {}", SYMB_TTREE, name); col = green; attr = A_BOLD; break;
+            case NodeType::HIST:    entry_label = std::format("{} {}", SYMB_THIST, name); col = blue; attr = A_ITALIC; break;
+            case NodeType::UNKNOWN: entry_label = std::format("{} {}", SYMB_TUNKNOWN, name); col = red; break;
         }
         attron(COLOR_PAIR(col));
         attron(attr);
@@ -400,7 +425,11 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
     clrtoeol();
     if (ticks.E != 0) {
         attron(COLOR_PAIR(yellow));
+#if USE_UNICODE
         std::string magnitude = std::format("x10{}", make_superscript(ticks.E));
+#else
+        std::string magnitude = std::format("x10^{}", make_superscript(ticks.E));
+#endif
         mvprintw(posy+wy+1, posx+wx-magnitude.size(), "%s", magnitude.c_str());
         attroff(COLOR_PAIR(yellow));
     }
