@@ -7,12 +7,16 @@
 #include <ncurses.h>
 #include "Browser.h"
 #include "AxisTicks.h"
+#include <TError.h>
 
 #undef DEBUG
 
 extern bool resize_flag;
 
 int main (int argc, char* argv[]) {
+    // Silence ROOT messages including errors
+    gErrorIgnoreLevel = kFatal;
+
     // Read argument
     std::string filename;
 #ifdef DEBUG

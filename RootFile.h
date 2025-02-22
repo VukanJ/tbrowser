@@ -26,16 +26,16 @@ class RootFile {
             int nesting = 0;
         } root_node;
 
+        std::string toString(Node*);
+        void updateDisplayList(Node*, int nesting=0);
+        void updateDisplayList();
+        int menuLength();
+
         std::vector<TDirectory*> m_directories;
         std::vector<TTree*> m_trees;
         std::vector<TLeaf*> m_leaves;
         std::vector<TH1D*> m_histos_th1d;
         std::vector<TObject*> m_unclassified;
-
-        std::string toString(Node*);
-        void updateDisplayList(Node*, int nesting=0);
-        void updateDisplayList();
-        int menuLength();
 
         using MenuItem = std::tuple<NodeType, std::string, Node*>;
         std::optional<MenuItem> getEntry(int);

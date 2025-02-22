@@ -51,6 +51,7 @@ private:
 
     // plot commands
     void plotHistogram(TTree*, TLeaf*);
+    void plotHistogram(const Console::DrawArgs&);
     void plotAxes(const AxisTicks&, int, int, int, int);
 
     // Window refreshing
@@ -88,6 +89,9 @@ private:
     // ROOT
     std::unique_ptr<TFile> m_tfile;
     RootFile root_file;
+
+    // State
+    RootFile::Node* last_drawn_leaf = nullptr;
 };
 
 #endif // BROWSER_H

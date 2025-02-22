@@ -18,7 +18,7 @@ bool Console::parse() {
     }
 
     curs_offset = 0;
-    current_args = {"", "", "", TVirtualTreePlayer::kMaxEntries, 0};
+    current_args = {"", "", "goff", TVirtualTreePlayer::kMaxEntries, 0};
 
     // Tokenize string by comma
     std::vector<std::string> tokens {""};
@@ -61,6 +61,8 @@ bool Console::parse() {
         valid = false;
     }
 
+    has_command = valid;
+
     return valid;
 }
 
@@ -75,10 +77,6 @@ void Console::handleInput(int key) {
     }
     else {
         switch (key) {
-            case KEY_ENTER: case 10: // Execute
-                parse();
-                entering_draw_command = false;
-                break;
             case 27: // ESCAPE
                 entering_draw_command = false; 
                 break;
@@ -183,5 +181,12 @@ void Console::redraw(int posy, int posx) {
         }
         attroff(A_REVERSE);
     }
+}
 
+bool Console::hasCommand() {
+    return has_command;
+}
+
+void Console::clearCommand() {
+    has_command = false;
 }

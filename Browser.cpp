@@ -1,15 +1,21 @@
 #include "Browser.h"
-#include "AxisTicks.h"
 #include <cctype>
 #include <cmath>
 #include <csignal>
 #include <format>
 #include <memory>
 #include <algorithm>
+#include <iostream>
 #include <ncurses.h>
 #include <string>
 #include <unistd.h>
 #include <unordered_map>
+
+#include "AxisTicks.h"
+#include "RootFile.h"
+#include "RtypesCore.h"
+#include "TTree.h"
+#include "TTreeFormula.h"
 #include "definitions.h"
 
 constexpr std::array<const char[4], 8> ascii { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█" };
@@ -187,10 +193,20 @@ void FileBrowser::toggleLogy() {
 } 
 
 void FileBrowser::plotHistogram() {
-    auto [type, name, node] = root_file.displayList.at(selected_pos + menu_scroll_pos);
-    if (type == NodeType::TLEAF) {
-        plotHistogram(root_file.m_trees.at(node->mother->index), 
-                      root_file.m_leaves.at(node->index));
+    // Get currently active TTree
+    if (console.hasCommand()) {
+        plotHistogram(console.current_args);
+    }
+    else {
+        std::size_t entry = selected_pos + menu_scroll_pos;
+        if (entry < root_file.displayList.size()) {
+            auto [type, name, node] = root_file.displayList.at(entry);
+            if (type == NodeType::TLEAF) {
+                last_drawn_leaf = node;
+                plotHistogram(root_file.m_trees.at(node->mother->index), 
+                        root_file.m_leaves.at(node->index));
+            }
+        }
     }
 }
 
@@ -294,14 +310,187 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
     printKeyBindings(wy + line++, wx + mainwin_x - 30);
 
-    //mvprintw(wy + mainwin_y + 2, wx + 1, "->Draw(");
-    //attron(A_REVERSE);
-    //mvprintw(wy + mainwin_y + 2, wx + 8, "<d>");
-    //attroff(A_REVERSE);
-    //mvprintw(wy + mainwin_y + 2, wx + 11, ")");
-    
     plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
 
+    refresh();
+}
+
+void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
+    // Get window position and size
+    int wx = getbegx(main_window);
+    int wy = getbegy(main_window);
+    getmaxyx(main_window, mainwin_y, mainwin_x);
+    box(main_window, 0, 0);
+
+    auto& [varexp, selection, option, nentries, firstentry] = args;
+
+    // Get selected tree
+    TTree* ttree = nullptr;
+    std::size_t entry = selected_pos + menu_scroll_pos;
+    if (entry < root_file.displayList.size()) {
+        auto [type, name, node] = root_file.displayList.at(entry);
+        if (node->type == NodeType::TLEAF) {
+            ttree = root_file.m_trees[node->mother->index];
+        }
+        else if (node->type == NodeType::TTREE) {
+            ttree = root_file.m_trees[node->index];
+        }
+    }
+
+    if (ttree == nullptr) {
+        mvprintw(4, 30, "NO TREE");
+        return; // Give up for now
+    }
+
+    mvprintw(4, 30, "A1 %s", varexp.c_str());
+    mvprintw(5, 30, "A2 %s", selection.c_str());
+    mvprintw(6, 30, "A3 %s", option);
+    mvprintw(7, 30, "A4 %lld", nentries);
+    mvprintw(8, 30, "A5 %lld", firstentry);
+
+    // Get bounds
+    auto bins_x = 2 * mainwin_x - 4;  // Border has width of 4 bins
+    auto bins_y = 2 * mainwin_y - 4;
+
+    ttree->SetEstimate(ttree->GetEntries());
+    Long64_t entriesDrawn = -1;
+    try {
+        entriesDrawn = ttree->Draw(varexp.c_str(), selection.c_str(), option, nentries, firstentry);
+    }
+    catch (...) {
+        return;
+    }
+
+    auto vector_branches = [ttree] (const char* form) -> TLeaf* {
+        // Check if formula involves vector branches
+        TTreeFormula formula("FORM", form, ttree);
+        for (int v = 0; v < formula.GetNdim(); ++v) {
+            if (TLeaf* leaf = formula.GetLeaf(v)->GetLeafCount(); leaf != nullptr) {
+                formula.Delete();
+                return leaf;
+            }
+        }
+        formula.Delete();
+        return nullptr;
+    };
+
+    if (TLeaf* lenLeaf = vector_branches(varexp.c_str()); lenLeaf != nullptr && false) {
+        // AFAIK, an efficient loop is required now
+        // SKIP!
+        TTreeFormula formula("FORM", varexp.c_str(), ttree);
+        auto nEntriesTop = ttree->GetEntries();
+        Long64_t len;
+        ttree->SetBranchStatus(lenLeaf->GetName(), 1);
+        ttree->SetBranchAddress(lenLeaf->GetName(), &len);
+        for (int i = 0; i < nEntriesTop; ++i) {
+            ttree->GetEntry(i);
+
+        }
+    }
+    else if (entriesDrawn != -1) {
+        Double_t* data = ttree->GetV1();
+        // This is a hack
+        Long64_t n = std::min<Long64_t>(ttree->GetSelectedRows(), ttree->GetEntries());
+        Double_t min = *std::min_element(data, data + n);
+        Double_t max = *std::max_element(data, data + n);
+
+        TH1D newhist("TEMP", "TEMP", bins_x, min, max);
+        newhist.FillN(n, data, nullptr);
+        newhist.Draw("goff");
+
+        mvprintw(10, 30, "HIST");
+        mvprintw(11, 30, "name %s", newhist.GetName());
+        mvprintw(12, 30, "title %s", newhist.GetTitle());
+        mvprintw(13, 30, "max %f", max);
+        mvprintw(14, 30, "min %f", min);
+        mvprintw(15, 30, "binsx %i", newhist.GetNbinsX());
+        mvprintw(16, 30, "processed %lld", ttree->GetSelectedRows());
+        mvprintw(17, 30, "n %lld", n);
+        mvprintw(18, 30, "Entries %lld", ttree->GetEntries());
+        mvprintw(19, 30, "first %f", data[0]);
+        if (min == max) {
+            // Handle single value histograms
+            min = min - 1;
+            max = min + 1;
+        }
+        const AxisTicks xaxis(min, max);
+        min = xaxis.min_adjusted();
+        max = xaxis.max_adjusted();
+
+        auto max_height = newhist.GetAt(newhist.GetMaximumBin())*1.1;
+
+        double pixel_y = max_height / bins_y;
+
+        if (logscale) {
+            max_height = log(max_height) + 1.0f;  //+1 order of base magnitude for plotting
+            pixel_y = max_height / bins_y;
+        }
+        // Draw ASCII art
+        attron(COLOR_PAIR(1));
+        for (int x = 0; x < bins_x / 2; x++) {
+            auto cl = newhist.GetBinContent(2 * x);
+            auto cr = newhist.GetBinContent(2 * x + 1);
+            if (logscale) {
+                cl = log(cl);
+                cr = log(cr);
+            }
+            for (int y = 0; y < bins_y / 2; ++y) {
+                // Check if ascii character is filled
+                std::uint8_t probe = ASCII_code::C_VOID;
+                probe |= ((2*y + 0) * pixel_y < cl) << 3;
+                probe |= ((2*y + 0) * pixel_y < cr) << 2;
+                probe |= ((2*y + 1) * pixel_y < cl) << 1;
+                probe |= ((2*y + 1) * pixel_y < cr);
+                if (probe == ASCII_code::C_VOID) {
+                    // fill rest with blanks, prevents overdraw...
+                    for (int f = y; f < bins_y / 2; ++f) {
+                        mvprintw(wy+mainwin_y-2-f, wx+1+x, " ");
+                    }
+                    break;
+                }
+                try {
+                    auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))];
+                    mvprintw(wy+mainwin_y-2-y, wx+1+x, "%s", print);
+                }
+                catch(...) {
+                    mvprintw(wy+mainwin_y-2-y, wx+1+x, "%i", probe);
+                }
+
+            }
+        }
+        attroff(COLOR_PAIR(1));
+        // Various annotations
+
+        // Plot Title
+        box(main_window, 0, 0);
+        wrefresh(main_window);
+        attron(A_ITALIC);
+        attron(A_UNDERLINE);
+        if (logscale) {
+            mvprintw(0, wx+2, "┤ log(%s) ├", newhist.GetTitle());
+        }
+        else {
+            mvprintw(0, wx+2, "┤ %s ├", newhist.GetTitle());
+        }
+        attroff(A_UNDERLINE);
+        attroff(A_ITALIC);
+
+        // Plot stats
+        int line = 1;
+        if (showstats) {
+            mvprintw(wy + line++, wx + mainwin_x - 30, "Entries: %i", (int)newhist.GetEntries());
+            mvprintw(wy + line++, wx + mainwin_x - 30, "Mean:    %.5f", newhist.GetMean());
+            mvprintw(wy + line++, wx + mainwin_x - 30, "Std:     %.5f", newhist.GetStdDev());
+            mvprintw(wy + line++, wx + mainwin_x - 30, "Bins:    %i",   bins_x);
+        }
+
+        mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
+        printKeyBindings(wy + line++, wx + mainwin_x - 30);
+
+        plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
+    }
+
+    
     refresh();
 }
 
@@ -490,7 +679,16 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
     }
 
     if (console.entering_draw_command) {
-        console.handleInput(key);
+        if (key == KEY_ENTER || key == 10) {
+            if (console.parse()) {
+                plotHistogram();
+            }
+            console.clearCommand();
+            console.entering_draw_command = false;
+        }
+        else {
+            console.handleInput(key);
+        }
         refreshCMDWindow();
         return;
     }
