@@ -394,7 +394,15 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         Double_t min = *std::min_element(data, data + n);
         Double_t max = *std::max_element(data, data + n);
 
-        TH1D newhist("TEMP", "TEMP", bins_x, min, max);
+        std::string title;
+        if (selection.empty()) {
+            title = varexp;
+        }
+        else {
+            title = std::format("{} ({})", varexp, selection);
+        }
+
+        TH1D newhist("TEMP", title.c_str(), bins_x, min, max);
         newhist.FillN(n, data, nullptr);
         newhist.Draw("goff");
 
@@ -490,7 +498,6 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
     }
 
-    
     refresh();
 }
 

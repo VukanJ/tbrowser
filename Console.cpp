@@ -11,6 +11,10 @@ Console::Console() {
 }
 
 bool Console::parse() {
+    if (current_input.empty()) {
+        has_command = false;
+        return false;
+    }
     // Remove whitespace and unneccessary characters
     for (auto c = current_input.begin(); c != current_input.end();) {
         if (*c == ' ' || *c == '\"') { c = current_input.erase(c); }
