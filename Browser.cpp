@@ -31,7 +31,7 @@ std::string make_superscript(int n) {
 volatile bool resize_flag = false;
 
 FileBrowser::FileBrowser() {
-    init_ncurses();
+    initNcurses();
     int sizex = getmaxx(stdscr);
     int sizey = getmaxy(stdscr);
     createWindow(main_window, sizey - bottom_height, sizex - menu_width, 0, menu_width);
@@ -43,7 +43,7 @@ refresh();
     box(main_window, 0, 0);
     wrefresh(main_window);
 
-    refresh_cmd_window();
+    refreshCMDWindow();
 
     getmaxyx(stdscr, terminal_size_y, terminal_size_x);
 }
@@ -60,7 +60,7 @@ FileBrowser::~FileBrowser() {
     endwin();
 }
 
-void FileBrowser::init_ncurses() {
+void FileBrowser::initNcurses() {
     // Init NCURSES
     setlocale(LC_ALL, "");
     initscr();
@@ -86,7 +86,7 @@ void FileBrowser::loadFile(std::string filename) {
     mvprintw(1, 1, "Reading...");
     refresh();
 
-    traverse_tfile(filename);
+    traverseTFile(filename);
     root_file.updateDisplayList();
 }
 
@@ -150,7 +150,7 @@ void FileBrowser::printDirectories() {
     wrefresh(dir_window);
 }
 
-void FileBrowser::selection_down() {
+void FileBrowser::selectionDown() {
     if (selected_pos == getmaxy(dir_window) - 3) {
         menu_scroll_pos++;
     }
@@ -159,7 +159,7 @@ void FileBrowser::selection_down() {
     }
 }
 
-void FileBrowser::selection_up() {
+void FileBrowser::selectionUp() {
     if (selected_pos == 0 && menu_scroll_pos > 0) {
         menu_scroll_pos--;
     }
@@ -384,7 +384,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
     }
 }
 
-void FileBrowser::refresh_cmd_window() {
+void FileBrowser::refreshCMDWindow() {
     int posx = getbegx(cmd_window) + 1;
     int posy = getbegy(cmd_window) + 1;
     // CMD hint
@@ -447,7 +447,7 @@ void FileBrowser::refresh_cmd_window() {
     wrefresh(cmd_window);
 }
 
-void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int depth) {
+void FileBrowser::traverseTFile(TDirectory* dir, RootFile::Node* node, int depth) {
     TList* keys = dir->GetListOfKeys();
     if (!keys) return;
 
@@ -468,7 +468,7 @@ void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int dept
         else if (obj->IsA()->InheritsFrom(TDirectory::Class())) {
             root_file.m_directories.push_back(dynamic_cast<TDirectory*>(obj));
             node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::DIRECTORY, root_file.m_directories.size() - 1, node, depth));
-            traverse_tfile((TDirectory*)obj, node->nodes.back().get(), depth + 1);
+            traverseTFile((TDirectory*)obj, node->nodes.back().get(), depth + 1);
         }
         else {
             root_file.m_unclassified.push_back(dynamic_cast<TObject*>(obj));
@@ -477,7 +477,7 @@ void FileBrowser::traverse_tfile(TDirectory* dir, RootFile::Node* node, int dept
     }
 }
 
-void FileBrowser::traverse_tfile(std::string& filename) {
+void FileBrowser::traverseTFile(std::string& filename) {
     m_tfile = std::unique_ptr<TFile>(TFile::Open(filename.c_str(), "READ"));
     if (!m_tfile || m_tfile->IsZombie()) {
         return;
@@ -486,7 +486,7 @@ void FileBrowser::traverse_tfile(std::string& filename) {
     root_file.m_directories.push_back(m_tfile.get());
     root_file.root_node.index = 0;
     root_file.root_node.type = NodeType::DIRECTORY;
-    traverse_tfile(m_tfile.get(), &root_file.root_node);
+    traverseTFile(m_tfile.get(), &root_file.root_node);
 
     // Open stuff
     root_file.root_node.setOpen(true);
@@ -522,8 +522,8 @@ void FileBrowser::handleMouseClick(int y, int x) {
     else if (isClickInWindow(cmd_window, y, x)) {
         console.entering_draw_command = true;
         int posx = x - getbegx(cmd_window) - 1;
-        console.cursor_move(posx);
-        refresh_cmd_window();
+        console.cursorMove(posx);
+        refreshCMDWindow();
     }
 }
 
@@ -535,10 +535,10 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
                 handleMouseClick(mouse_event.y, mouse_event.x);
             }
             else if (mouse_event.bstate == BUTTON4_PRESSED) {
-                selection_up();
+                selectionUp();
             }
             else if (mouse_event.bstate == BUTTON5_PRESSED) {
-                selection_down();
+                selectionDown();
             }
         }
         return;
@@ -546,7 +546,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 
     if (console.entering_draw_command) {
         console.handleInput(key);
-        refresh_cmd_window();
+        refreshCMDWindow();
         return;
     }
 
@@ -554,10 +554,10 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 
     switch (key) {
         case KEY_DOWN:
-            selection_down();
+            selectionDown();
             break;
         case KEY_UP:
-            selection_up();
+            selectionUp();
             break;
         case 'q':
             is_running = false;
@@ -590,13 +590,13 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             handleMenuSelect();
             break;
         default:
-            if (console.valid_char(key)) {
+            if (console.validChar(key)) {
                 nonsense.push_back(key);
             }
             invalid_key = true;
             break;
     }
-    refresh_cmd_window();
+    refreshCMDWindow();
 
     if (!invalid_key) {
         nonsense.clear();
@@ -651,97 +651,3 @@ void FileBrowser::handleMenuSelect() {
     }
 }
 
-void FileBrowser::RootFile::updateDisplayList(Node* mothernode, int nesting) {
-    for (auto& node : mothernode->nodes) {
-        switch (node->type) {
-            case NodeType::DIRECTORY:
-                displayList.emplace_back(node->type, m_directories[node->index]->GetName(), node.get());
-                updateDisplayList(node.get(), nesting+1);
-                break;
-            case NodeType::TTREE:
-                displayList.emplace_back(node->type, m_trees[node->index]->GetName(), node.get());
-                updateDisplayList(node.get(), nesting+1);
-                break;
-            case NodeType::TLEAF:
-                displayList.emplace_back(node->type, m_leaves[node->index]->GetName(), node.get());
-                break;
-            case NodeType::HIST:
-                displayList.emplace_back(node->type, m_histos_th1d[node->index]->GetName(), node.get());
-                break;
-            case NodeType::UNKNOWN:
-                displayList.emplace_back(node->type, m_unclassified[node->index]->GetName(), node.get());
-                break;
-            default: break;
-        }
-    }
-}
-
-void FileBrowser::RootFile::updateDisplayList() {
-    // Make flat file structure list for quick redraw
-    displayList.clear();
-    displayList.emplace_back(root_node.type, m_directories[root_node.index]->GetName(), &root_node);
-    updateDisplayList(&root_node);
-}
-
-std::optional<FileBrowser::RootFile::MenuItem> FileBrowser::RootFile::getEntry(int i) {
-    int entry = 0;
-    for (size_t j = 0; j < displayList.size(); ++j) {
-        if (std::get<2>(displayList[j])->open) {
-            if (entry == i) {
-                return displayList[j];
-            }
-            entry++;
-        }
-    }
-    return std::nullopt;
-}
-
-int FileBrowser::RootFile::menuLength() {
-    int length = 0;
-    for (const auto& [a, b, node] : displayList) {
-        if (node->open) {
-            length++;
-        }
-    }
-    return length;
-}
-
-void FileBrowser::RootFile::Node::setOpen(bool state, int recurse) {
-    if (recurse > 0) {
-        open = state; // Dont hide element we are clicking on
-    }
-    if (type == NodeType::DIRECTORY || type == NodeType::TTREE) {
-        directory_open = state;
-        for (auto& node : nodes) {
-            node->setOpen(state, recurse + 1);
-        }
-    }
-    else {
-        open = state;
-    }
-}
-
-std::string FileBrowser::RootFile::toString(Node* node) {
-    std::string descr;
-    std::string name;
-    std::string title;
-    std::string classname;
-    auto make_name = [&name, &title, &classname](TObject* obj){
-        name = obj->GetName();
-        title = obj->GetTitle();
-        classname = obj->ClassName();
-        if (name != title) {
-            return std::format("({}) {} \"{}\"", classname, name, title);
-        }
-        return std::format("({}) {}", classname, name, title);
-    };
-    switch (node->type) {
-        case NodeType::DIRECTORY: descr = make_name(m_directories[node->index]);  break;
-        case NodeType::TTREE:     descr = make_name(m_trees[node->index]);        break;
-        case NodeType::TLEAF:     descr = make_name(m_leaves[node->index]);       break;
-        case NodeType::HIST:      descr = make_name(m_histos_th1d[node->index]);  break;
-        case NodeType::UNKNOWN:   descr = make_name(m_unclassified[node->index]); break;
-    }
-
-    return descr;
-}

@@ -13,7 +13,7 @@ include_directories(${CURSES_INCLUDE_DIR})
 include(${ROOT_USE_FILE})
 
 # Add executable
-add_executable(${PROGRAM} Main.cpp Browser.cpp AxisTicks.cpp Console.cpp)
+add_executable(${PROGRAM} Main.cpp Browser.cpp AxisTicks.cpp Console.cpp RootFile.cpp)
 
 # Link against ncurses and ROOT
 target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})

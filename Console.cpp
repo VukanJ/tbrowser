@@ -64,7 +64,7 @@ bool Console::parse() {
 }
 
 void Console::handleInput(int key) {
-    if (valid_char(key)) {
+    if (validChar(key)) {
         if (curs_offset > 0) {
             current_input.insert(current_input.size() - curs_offset, 1, static_cast<char>(key));
         }
@@ -119,11 +119,11 @@ void Console::handleInput(int key) {
     }
 }
 
-bool Console::valid_char(int c) {
+bool Console::validChar(int c) {
     return isalnum(c) || allowed_chars.contains(c);
 }
 
-void Console::cursor_move(int pos) {
+void Console::cursorMove(int pos) {
     if (pos >= 0 && pos < current_input.size()) {
         curs_offset = current_input.size() - pos;
     }
