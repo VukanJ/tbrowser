@@ -28,9 +28,6 @@ public:
     bool isRunning() const { return is_running; };
 
 private:
-    enum color {
-        blue=1, green, red, white, yellow, white_on_blue
-    };
     static void initNcurses();
     static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, int pos_x);
 

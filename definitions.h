@@ -40,6 +40,10 @@ inline std::unordered_map<ASCII_code, ASCII> ascii_map = {
     {C_FULL_BLOCK,   FULL_BLOCK},
 };
 
+enum color {
+    blue=1, green, red, white, yellow, white_on_blue
+};
+
 #ifndef USE_UNICODE
 #define USE_UNICODE 1
 #endif

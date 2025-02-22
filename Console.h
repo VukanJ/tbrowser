@@ -15,18 +15,18 @@ public:
     bool validChar(int);
     void cursorMove(int);
     bool parse();
+    void redraw(int posy, int posx);
 
-    std::vector<std::string> command_buffer;
-    std::string current_input;
-    int curs_offset = 0;
-    bool entering_draw_command = false; // Input mode
+    bool entering_draw_command = false; // In focus
 
     DrawArgs current_args{"", "", "", 0, 0};
-
-    std::string last_error;
+    std::string current_input;
 
 private:
+    std::string last_error;
+    int curs_offset = 0;
     std::unordered_set<char> allowed_chars;
+    std::vector<std::string> command_buffer;
 };
 
 #endif // !CONSOLE

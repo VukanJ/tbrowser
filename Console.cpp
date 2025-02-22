@@ -3,6 +3,7 @@
 #include <ncurses.h>
 #include <stdexcept>
 #include <format>
+#include "definitions.h"
 
 Console::Console() {
     std::string chars = " \",._<>()[]=!&|?+-*/%:@$";
@@ -127,4 +128,60 @@ void Console::cursorMove(int pos) {
     if (pos >= 0 && pos < current_input.size()) {
         curs_offset = current_input.size() - pos;
     }
+}
+
+void Console::redraw(int posy, int posx) {
+    // CMD hint
+    attron(COLOR_PAIR(red));
+    mvprintw(posy, posx - 6, "Draw(");
+    attroff(COLOR_PAIR(red));
+
+    bool error_display = false;
+    if (!last_error.empty()) {
+        error_display = true;
+        attron(COLOR_PAIR(red));
+        mvprintw(posy, posx, "%s", last_error.c_str());
+        attroff(COLOR_PAIR(red));
+        last_error.clear();
+    }
+    else {
+        // Command state
+        if (entering_draw_command) {
+            attron(COLOR_PAIR(yellow));
+            attron(A_REVERSE);
+            mvprintw(posy-2, posx, " INPUT ");
+            attroff(A_REVERSE);
+            attroff(COLOR_PAIR(yellow));
+        }
+        else {
+            mvprintw(posy-2, posx, "       ");
+        }
+    }
+
+    // Display input
+    if (!error_display) {
+        if (current_input.empty() && !entering_draw_command) {
+            mvprintw(posy, posx, "Press <d>");
+        }
+        else {
+            mvprintw(posy, posx, "%s", current_input.c_str());
+        }
+    }
+
+    if (entering_draw_command) {
+        // Draw blinking cursor
+        attron(A_REVERSE);
+        if (curs_offset > 0) {
+            // Draw highlighted letter
+            mvprintw(posy, posx + current_input.size() - curs_offset, "%c", current_input[current_input.size() - curs_offset]);
+        }
+        else {
+            // Just draw the cursor
+            attron(A_BLINK);
+            mvprintw(posy, posx + current_input.size(), "█");
+            attroff(A_BLINK);
+        }
+        attroff(A_REVERSE);
+    }
+
 }

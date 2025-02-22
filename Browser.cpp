@@ -4,7 +4,6 @@
 #include <cmath>
 #include <csignal>
 #include <format>
-#include <limits>
 #include <memory>
 #include <algorithm>
 #include <ncurses.h>
@@ -68,7 +67,7 @@ void FileBrowser::initNcurses() {
     cbreak();
     keypad(stdscr, TRUE);
     curs_set(0);
-    signal(SIGWINCH, [](int signum) { resize_flag = true; });
+    signal(SIGWINCH, [](int) { resize_flag = true; });
 
     mouseinterval(0);
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
@@ -94,7 +93,6 @@ void FileBrowser::printDirectories() {
     int x = getbegx(dir_window) + 1;
     int y = getbegy(dir_window) + 1;
     int maxlines = getmaxy(dir_window) - 2;
-    int maxcols = getmaxx(dir_window);
 
     int entry = -menu_scroll_pos;
     auto print_entry = [this, &entry, y, x](NodeType type, std::string name, RootFile::Node* node){
@@ -387,60 +385,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
 void FileBrowser::refreshCMDWindow() {
     int posx = getbegx(cmd_window) + 1;
     int posy = getbegy(cmd_window) + 1;
-    // CMD hint
-    attron(COLOR_PAIR(red));
-    mvprintw(posy, posx - 6, "Draw(");
-    attroff(COLOR_PAIR(red));
-
-    bool error_display = false;
-    if (!console.last_error.empty()) {
-        error_display = true;
-        attron(COLOR_PAIR(red));
-        mvprintw(posy, posx, "%s", console.last_error.c_str());
-        attroff(COLOR_PAIR(red));
-        console.last_error.clear();
-    }
-    else {
-        // Command state
-        if (console.entering_draw_command) {
-            attron(COLOR_PAIR(yellow));
-            attron(A_REVERSE);
-            mvprintw(posy-2, posx, " INPUT ");
-            attroff(A_REVERSE);
-            attroff(COLOR_PAIR(yellow));
-        }
-        else {
-            mvprintw(posy-2, posx, "       ");
-        }
-    }
-
-
-    // Display input
-    if (!error_display) {
-        if (console.current_input.empty() && !console.entering_draw_command) {
-            mvprintw(posy, posx, "Press <d>");
-        }
-        else {
-            mvprintw(posy, posx, "%s", console.current_input.c_str());
-        }
-    }
-
-    if (console.entering_draw_command) {
-        // Draw blinking cursor
-        attron(A_REVERSE);
-        if (console.curs_offset > 0) {
-            // Draw blinking letter
-            mvprintw(posy, posx + console.current_input.size() - console.curs_offset, "%c", console.current_input[console.current_input.size() - console.curs_offset]);
-        }
-        else {
-            // Just draw the cursor
-            attron(A_BLINK);
-            mvprintw(posy, posx + console.current_input.size(), "█");
-            attroff(A_BLINK);
-        }
-        attroff(A_REVERSE);
-    }
-
+    console.redraw(posy, posx);
     wattron(cmd_window, COLOR_PAIR(blue));
     box(cmd_window, 0, 0);
     wattroff(cmd_window, COLOR_PAIR(blue));
