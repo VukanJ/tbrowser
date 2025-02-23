@@ -49,6 +49,8 @@ private:
     void plotHistogram(TTree*, TLeaf*);
     void plotHistogram(const Console::DrawArgs&);
     void plotAxes(const AxisTicks&, int, int, int, int);
+    void plotCanvasAnnotations(TH1* hist, int winy, int winx);
+    void plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx);
 
     // Window refreshing
     void refreshCMDWindow();

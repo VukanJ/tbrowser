@@ -208,8 +208,8 @@ void FileBrowser::plotHistogram() {
 
 void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     // Get window position and size
-    int wx = getbegx(main_window);
-    int wy = getbegy(main_window);
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
@@ -234,84 +234,17 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
 
     tree->Project("H", leafname);
     
-    auto max_height = hist.GetAt(hist.GetMaximumBin())*1.1;
-
-    double pixel_y = max_height / bins_y;
-
-    if (logscale) {
-        max_height = log(max_height) + 1.0f;  //+1 order of base magnitude for plotting
-        pixel_y = max_height / bins_y;
-    }
-    
-    // Draw ASCII art
-    attron(COLOR_PAIR(1));
-    for (int x = 0; x < bins_x / 2; x++) {
-        auto cl = hist.GetBinContent(2 * x);
-        auto cr = hist.GetBinContent(2 * x + 1);
-        if (logscale) {
-            cl = log(cl);
-            cr = log(cr);
-        }
-        for (int y = 0; y < bins_y / 2; ++y) {
-            // Check if ascii character is filled
-            std::uint8_t probe = ASCII_code::C_VOID;
-            probe |= ((2*y + 0) * pixel_y < cl) << 3;
-            probe |= ((2*y + 0) * pixel_y < cr) << 2;
-            probe |= ((2*y + 1) * pixel_y < cl) << 1;
-            probe |= ((2*y + 1) * pixel_y < cr);
-            if (probe == ASCII_code::C_VOID) {
-                // fill rest with blanks, prevents overdraw...
-                for (int f = y; f < bins_y / 2; ++f) {
-                    mvprintw(wy+mainwin_y-2-f, wx+1+x, " ");
-                }
-                break;
-            }
-            try {
-                auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))];
-                mvprintw(wy+mainwin_y-2-y, wx+1+x, "%s", print);
-            }
-            catch(...) {
-                mvprintw(wy+mainwin_y-2-y, wx+1+x, "%i", probe);
-            }
-
-        }
-    }
-    attroff(COLOR_PAIR(1));
-
-    // Various annotations
-
-    // Plot Title
-    box(main_window, 0, 0);
-    wrefresh(main_window);
-    attron(A_ITALIC);
-    attron(A_BOLD);
-    if (logscale) {
-        mvprintw(1, wx+2, "┤ log(%s) ├", leaf->GetTitle());
-    }
-    else {
-        mvprintw(1, wx+2, "┤ %s ├", leaf->GetTitle());
-    }
-    attroff(A_BOLD);
-    attroff(A_ITALIC);
-
-    // Plot stats
-    int line = 1;
-    if (showstats) {
-        mvprintw(wy + line++, wx + mainwin_x - 30, "Entries: %i", (int)hist.GetEntries());
-        mvprintw(wy + line++, wx + mainwin_x - 30, "Mean:    %.5f", hist.GetMean());
-        mvprintw(wy + line++, wx + mainwin_x - 30, "Std:     %.5f", hist.GetStdDev());
-        mvprintw(wy + line++, wx + mainwin_x - 30, "Bins:    %i",   bins_x);
-    }
-
-    plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
+    plotASCIIHistogram(winy, winx, &hist, bins_y, bins_x);
+    plotCanvasAnnotations(&hist, winy, winx);
+    plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x);
 
     refresh();
 }
 
 void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     // Get window position and size
-    int wx = getbegx(main_window);
-    int wy = getbegy(main_window);
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
@@ -419,86 +352,90 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         min = xaxis.min_adjusted();
         max = xaxis.max_adjusted();
 
-        auto max_height = newhist.GetAt(newhist.GetMaximumBin())*1.1;
-
-        double pixel_y = max_height / bins_y;
-
-        if (logscale) {
-            max_height = log(max_height) + 1.0f;  //+1 order of base magnitude for plotting
-            pixel_y = max_height / bins_y;
-        }
-        // Draw ASCII art
-        attron(COLOR_PAIR(1));
-        for (int x = 0; x < bins_x / 2; x++) {
-            auto cl = newhist.GetBinContent(2 * x);
-            auto cr = newhist.GetBinContent(2 * x + 1);
-            if (logscale) {
-                cl = log(cl);
-                cr = log(cr);
-            }
-            for (int y = 0; y < bins_y / 2; ++y) {
-                // Check if ascii character is filled
-                std::uint8_t probe = ASCII_code::C_VOID;
-                probe |= ((2*y + 0) * pixel_y < cl) << 3;
-                probe |= ((2*y + 0) * pixel_y < cr) << 2;
-                probe |= ((2*y + 1) * pixel_y < cl) << 1;
-                probe |= ((2*y + 1) * pixel_y < cr);
-                if (probe == ASCII_code::C_VOID) {
-                    // fill rest with blanks, prevents overdraw...
-                    for (int f = y; f < bins_y / 2; ++f) {
-                        mvprintw(wy+mainwin_y-2-f, wx+1+x, " ");
-                    }
-                    break;
-                }
-                try {
-                    auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))];
-                    mvprintw(wy+mainwin_y-2-y, wx+1+x, "%s", print);
-                }
-                catch(...) {
-                    mvprintw(wy+mainwin_y-2-y, wx+1+x, "%i", probe);
-                }
-
-            }
-        }
-        attroff(COLOR_PAIR(1));
-        // Various annotations
-
-        // Plot Title
-        box(main_window, 0, 0);
-        wrefresh(main_window);
-        attron(A_ITALIC);
-        attron(A_UNDERLINE);
-        if (logscale) {
-            mvprintw(1, wx+2, "┤ log(%s) ├", newhist.GetTitle());
-        }
-        else {
-            mvprintw(1, wx+2, "┤ %s ├", newhist.GetTitle());
-        }
-        attroff(A_UNDERLINE);
-        attroff(A_ITALIC);
-
-        // Plot stats
-        int line = 1;
-        if (showstats) {
-            mvprintw(wy + line++, wx + mainwin_x - 30, "Entries: %i", (int)newhist.GetEntries());
-            mvprintw(wy + line++, wx + mainwin_x - 30, "Mean:    %.5f", newhist.GetMean());
-            mvprintw(wy + line++, wx + mainwin_x - 30, "Std:     %.5f", newhist.GetStdDev());
-            mvprintw(wy + line++, wx + mainwin_x - 30, "Bins:    %i",   bins_x);
-        }
-
-        if (newhist.GetEntries() == 0) {
-            attron(A_BOLD);
-            mvprintw(wy + mainwin_y / 2, wx + mainwin_x / 2 - 3, "Empty");
-            attroff(A_BOLD);
-        }
-
-        plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
+        plotASCIIHistogram(winy, winx, &newhist, bins_y, bins_x);
+        plotCanvasAnnotations(&newhist, winy, winx);
+        plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x);
     }
     else {
         console.setError("Branch not found");
     }
 
     refresh();
+}
+
+void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx) {
+    double max_height = hist->GetAt(hist->GetMaximumBin())*1.1;
+    double pixel_y = max_height / binsy;
+
+    if (logscale) {
+        max_height = log(max_height) + 1.0f;  //+1 order of base magnitude for plotting
+        pixel_y = max_height / binsy;
+    }
+    // Draw ASCII art
+    attron(COLOR_PAIR(1));
+    for (int x = 0; x < binsx / 2; x++) {
+        auto cl = hist->GetBinContent(2 * x);
+        auto cr = hist->GetBinContent(2 * x + 1);
+        if (logscale) {
+            cl = log(cl);
+            cr = log(cr);
+        }
+        for (int y = 0; y < binsy / 2; ++y) {
+            // Check if ascii character is filled
+            std::uint8_t probe = ASCII_code::C_VOID;
+            probe |= ((2*y + 0) * pixel_y < cl) << 3;
+            probe |= ((2*y + 0) * pixel_y < cr) << 2;
+            probe |= ((2*y + 1) * pixel_y < cl) << 1;
+            probe |= ((2*y + 1) * pixel_y < cr);
+            if (probe == ASCII_code::C_VOID) {
+                // fill rest with blanks, prevents overdraw...
+                for (int f = y; f < binsy / 2; ++f) {
+                    mvprintw(winy+mainwin_y-2-f, winx+1+x, " ");
+                }
+                break;
+            }
+            try {
+                auto print = ascii[ascii_map.at(static_cast<ASCII_code>(probe))];
+                mvprintw(winy+mainwin_y-2-y, winx+1+x, "%s", print);
+            }
+            catch(...) {
+                mvprintw(winy+mainwin_y-2-y, winx+1+x, "%i", probe);
+            }
+
+        }
+    }
+    attroff(COLOR_PAIR(1));
+}
+
+void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
+    // Plot Title
+    box(main_window, 0, 0);
+    wrefresh(main_window);
+    attron(A_ITALIC);
+    attron(A_UNDERLINE);
+    if (logscale) {
+        mvprintw(1, winx+2, "┤ log(%s) ├", hist->GetTitle());
+    }
+    else {
+        mvprintw(1, winx+2, "┤ %s ├", hist->GetTitle());
+    }
+    attroff(A_UNDERLINE);
+    attroff(A_ITALIC);
+
+    // Plot stats
+    int line = 1;
+    if (showstats) {
+        mvprintw(winy + line++, winx + mainwin_x - 30, "Entries: %f",   hist->GetEntries());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "Mean:    %.5f", hist->GetMean());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "Std:     %.5f", hist->GetStdDev());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "Bins:    %i",   hist->GetNbinsX());
+    }
+
+    if (hist->GetEntries() == 0) {
+        attron(A_BOLD);
+        mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 3, "Empty");
+        attroff(A_BOLD);
+    }
 }
 
 void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey, int sizex) 

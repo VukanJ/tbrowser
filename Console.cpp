@@ -123,7 +123,7 @@ void Console::handleInput(int key) {
                     if (!current_input.empty()) {
                         if (curs_offset > 0) {
                             // Delete inside string
-                            if (int delete_pos = current_input.size() - curs_offset; delete_pos >= 0) {
+                            if (int delete_pos = current_input.size() - curs_offset - (key == KEY_BACKSPACE ? 1 : 0); delete_pos >= 0) {
                                 current_input.erase(delete_pos, 1);
                             }
                         }

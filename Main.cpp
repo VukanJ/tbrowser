@@ -17,8 +17,9 @@
 // - [ ] TH1 plotting
 // - [ ] TH2 plotting
 // - [ ] Tab completion
-// - [ ] Help window <?>
-// - [ ] Console delete fix
+// - [x] Help window <?>
+// - [x] Console delete fix
+// - [ ] Console history
 // - [ ] Console horizontal scroll 
 // - [ ] Search
 
