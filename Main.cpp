@@ -9,6 +9,15 @@
 #include "AxisTicks.h"
 #include <TError.h>
 
+// TODO
+// - [ ] Open obvious tree
+// - [ ] Make console active tree dependent
+// - [ ] y axis
+// - [ ] histogram spec in drawcall
+// - [ ] TH1 plotting
+// - [ ] TH2 plotting
+// - [ ] Tab completion
+
 #undef DEBUG
 
 extern bool resize_flag;

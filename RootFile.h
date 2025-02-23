@@ -15,20 +15,21 @@ public:
     ~RootFile();
     void load(std::string filename);
 
+    // TObject in ROOT file
     class Node final {
     public:
         Node();
         Node(NodeType nt, int idx, Node* mot, int nest);
         void toggleOpenOnClick();
 
-        NodeType type;
+        NodeType type; // TObject category
         int index = -1; // Logical pointer to storage
         Node* mother; // So leaves know their tree
         std::vector<std::unique_ptr<Node>> nodes;
 
         enum OpenState {DIR_OPEN = 0b10, LISTED = 0b01, DEFAULT=0b0};
         std::uint8_t openState = DEFAULT;
-        int nesting = 0;
+        int nesting = 0; // for printing
     private:
         void recurseOpen(bool open);
     } root_node;
@@ -40,6 +41,7 @@ public:
     std::string toString(Node*);
     int menuLength();
 
+    // Object address storage
     std::vector<TDirectory*> m_directories;
     std::vector<TTree*> m_trees;
     std::vector<TLeaf*> m_leaves;
@@ -47,13 +49,14 @@ public:
     std::vector<TObject*> m_unclassified;
 
 private:
-    std::unique_ptr<TFile> m_tfile;
-    void traverseTFile(TDirectory*, RootFile::Node*, int depth=0);
     void traverseTFile(std::string& filename);
+    void traverseTFile(TDirectory*, RootFile::Node*, int depth=0);
     void readBranches(RootFile::Node*, TTree*, int depth);
-
     void populateMenu(Node*, int nesting=0);
     void populateMenu();
+    void openObviousDirectory(Node*);
+
+    std::unique_ptr<TFile> m_tfile;
 };
 
 #endif // ROOTFILE_H

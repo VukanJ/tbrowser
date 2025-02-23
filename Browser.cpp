@@ -736,7 +736,6 @@ void FileBrowser::handleMenuSelect() {
     }
 
     auto& [name, node] = fetch.value();
-    mvprintw(getmaxy(stdscr)-2, 0, "Clicked on %s", name.c_str());
     if (node->type == NodeType::DIRECTORY || node->type == NodeType::TTREE) {
         node->toggleOpenOnClick();
     }

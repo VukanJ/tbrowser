@@ -1,5 +1,6 @@
 #include "RootFile.h"
 #include "TKey.h"
+#include <numeric>
 
 RootFile::Node::Node() : type(NodeType::UNKNOWN), index(-1) { }
 
@@ -172,6 +173,7 @@ void RootFile::traverseTFile(std::string& filename) {
     // Open stuff
     root_node.openState |= RootFile::Node::LISTED;
     root_node.toggleOpenOnClick();
+    openObviousDirectory(&root_node);
 }
 
 void RootFile::readBranches(RootFile::Node* node, TTree* tree, int depth) {
@@ -179,5 +181,21 @@ void RootFile::readBranches(RootFile::Node* node, TTree* tree, int depth) {
         m_leaves.push_back(static_cast<TLeaf*>(leaf));
         node->nodes.emplace_back(std::make_unique<RootFile::Node>(
                     NodeType::TLEAF, m_leaves.size() - 1, node, depth));
+    }
+}
+
+void RootFile::openObviousDirectory(Node* node) {
+    int dirCount = 0;
+    Node* gotoDir = nullptr;
+    for (const auto& child : node->nodes) {
+        if (child->type == NodeType::DIRECTORY || child->type == NodeType::TTREE) {
+            dirCount++;
+            gotoDir = child.get();
+        }
+    }
+
+    if (dirCount == 1) {
+        gotoDir->toggleOpenOnClick();
+        openObviousDirectory(gotoDir);
     }
 }
