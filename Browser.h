@@ -67,7 +67,7 @@ private:
     int terminal_size_y;
     int terminal_size_x;
     int menu_width = 20;
-    int bottom_height = 6;
+    int bottom_height = 7;
 
     int selected_pos = 0;
     int menu_scroll_pos = 0;

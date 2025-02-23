@@ -17,6 +17,8 @@
 // - [ ] TH1 plotting
 // - [ ] TH2 plotting
 // - [ ] Tab completion
+// - [ ] Histogram buffer (quick redraw)
+// - [ ] Make log toggle command dependent
 // - [x] Help window <?>
 // - [x] Console delete fix
 // - [ ] Console history
@@ -68,5 +70,3 @@ int main (int argc, char* argv[]) {
 
     return EXIT_SUCCESS;
 }
-
-

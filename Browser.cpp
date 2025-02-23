@@ -42,7 +42,7 @@ FileBrowser::FileBrowser() {
     int sizey = getmaxy(stdscr);
     createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
     createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
-    createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 2, 20 + 5);
+    createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 3, 20 + 5);
 
     refresh();
     box(dir_window, 0, 0);
@@ -82,6 +82,15 @@ void FileBrowser::initNcurses() {
     init_pair(white, COLOR_WHITE, COLOR_BLACK);
     init_pair(yellow, COLOR_YELLOW, COLOR_BLACK);
     init_pair(white_on_blue, COLOR_WHITE, COLOR_BLUE);
+    init_pair(whiteblue, 33, COLOR_BLACK);
+
+    // initialize grayscale
+    int grayscale = grayscale_start;
+    init_pair(grayscale++, COLOR_BLACK, COLOR_BLACK);
+    for (int c = 232; c <= 255; ++c) {
+        init_pair(grayscale++, c, COLOR_BLACK);
+    }
+    init_pair(grayscale++, COLOR_WHITE, COLOR_BLACK);
 }
 
 void FileBrowser::loadFile(std::string filename) {
@@ -372,7 +381,7 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
         pixel_y = max_height / binsy;
     }
     // Draw ASCII art
-    attron(COLOR_PAIR(1));
+    attron(COLOR_PAIR(whiteblue));
     for (int x = 0; x < binsx / 2; x++) {
         auto cl = hist->GetBinContent(2 * x);
         auto cr = hist->GetBinContent(2 * x + 1);
@@ -688,7 +697,9 @@ void FileBrowser::helpWindow() {
         mvwprintw(help, ++line, 2, "%s", text.c_str());
     };
 
+    attron(A_UNDERLINE);
     helpline(" HELP ");
+    attroff(A_UNDERLINE);
     line++;
     helpline("Show help ............ <?>");
     helpline("Search branch ........ </>");
@@ -701,6 +712,16 @@ void FileBrowser::helpWindow() {
     helpline("Go to bottom ......... <G>");
     helpline("Plot selected ........ <ENTER/LMB>");
     helpline("Quit ................. <q/Ctrl+C>");
+
+    line = 0;
+    attron(A_UNDERLINE);
+    mvwprintw(help, ++line, 53, "Terminal capabilities");
+    attroff(A_UNDERLINE);
+    line++;
+    mvwprintw(help, ++line, 53, "Color support: ........... %s", has_colors() ? "YES" : "NO");
+    mvwprintw(help, ++line, 53, "Extended color support: .. %s", can_change_color() ? "YES" : "NO");
+    mvwprintw(help, ++line, 53, "Compiled with unicode: ... %s", USE_UNICODE == 1 ? "YES" : "NO");
+    mvwprintw(help, ++line, 53, "Terminal colors: ......... %i", tigetnum("colors"));
 
     attron(A_ITALIC);
     mvprintw(getbegy(help) + getmaxy(help) - 2, getbegy(help) + 1, "Repository: github.com/VukanJ/tbrowser");
