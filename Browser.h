@@ -58,10 +58,6 @@ private:
     void refreshCMDWindow();
     Console console;
 
-    void traverseTFile(TDirectory*, RootFile::Node*, int depth=0);
-    void traverseTFile(std::string& filename);
-    void readBranches(RootFile::Node*, TTree*, int depth);
-
     // Ncurses
     WINDOW* dir_window = nullptr;
     WINDOW* main_window = nullptr;
@@ -87,11 +83,7 @@ private:
     std::string nonsense;
 
     // ROOT
-    std::unique_ptr<TFile> m_tfile;
     RootFile root_file;
-
-    // State
-    RootFile::Node* last_drawn_leaf = nullptr;
 };
 
 #endif // BROWSER_H

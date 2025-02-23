@@ -26,6 +26,26 @@ bool Console::parse() {
 
     // Tokenize string by comma
     std::vector<std::string> tokens {""};
+
+    // interpret varexp
+    if (current_input.contains(">>(")) {
+        // User is specifying histogram
+        // "var1>>(100, 10, 100, 1000, 0, 1)" can be the first token
+        auto start_hist_spec = current_input.find(">>(");
+        auto end_hist_spec = current_input.find(")", start_hist_spec);
+        tokens.back() = current_input.substr(0, end_hist_spec + 1);
+        current_input = current_input.substr(end_hist_spec + 1);
+    }
+    if (current_input.contains(":")) {
+        if (std::count(current_input.begin(), current_input.end(), ':') > 1) {
+            // Cannot handle 3D hists
+            last_error = "Cannot plot 3D histograms :(";
+            has_command = false;
+            return false;
+        }
+        // User is specifying 2D dimensional hist
+    }
+
     for (auto c : current_input) {
         if (c == ',') {
             tokens.emplace_back();
@@ -33,6 +53,10 @@ bool Console::parse() {
         else {
             tokens.back() += c;
         }
+    }
+    for (int i = 0; auto t : tokens) {
+        mvprintw(40 + i, 40, "%i %s", i+1, t.c_str());
+        i++;
     }
 
     // Parse entries, do basic checks

@@ -20,10 +20,8 @@ int main (int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    /* FileBrowser b; */
-    /* b.loadFile("./build/ntuple.root"); */
-    AxisTicks t(0, 3e-4);
-    return EXIT_SUCCESS;
+    RootFile rfile;
+    rfile.load("build/ntuple.root");
 #else
     if (argc == 2) {
         if (std::filesystem::exists(argv[1])) {
@@ -39,8 +37,6 @@ int main (int argc, char* argv[]) {
     }
 #endif
     // Initial window setup
-    int nredraws = 0;
-
     FileBrowser browser;
     browser.loadFile(filename.c_str());
 
@@ -48,14 +44,11 @@ int main (int argc, char* argv[]) {
 
     while (browser.isRunning()) {
         browser.printDirectories();
-
         int input = getch();
         
-        // mvprintw(0, 0, std::to_string(nredraws++).c_str());
         if (resize_flag) {
             browser.handleResize();
         }
-
         browser.handleInputEvent(mouse_event, input);
     }
 
