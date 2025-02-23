@@ -218,3 +218,7 @@ bool Console::hasCommand() {
 void Console::clearCommand() {
     has_command = false;
 }
+
+void Console::setError(const char* error) {
+    last_error = error;
+}

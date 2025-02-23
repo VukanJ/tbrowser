@@ -19,6 +19,7 @@ public:
 
     bool hasCommand();
     void clearCommand();
+    void setError(const char* str);
 
     bool entering_draw_command = false; // In focus
 

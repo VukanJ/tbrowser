@@ -3,12 +3,8 @@
 
 #include <ncurses.h>
 
-#include "TFile.h"
-#include "TObject.h"
 #include "TTree.h"
-#include "TKey.h"
 #include "TLeaf.h"
-#include "TH1.h"
 
 #include "AxisTicks.h"
 #include "Console.h"
@@ -31,6 +27,8 @@ private:
     static void initNcurses();
     static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, int pos_x);
 
+    void drawEssentials();
+
     void handleMenuSelect();
     void handleMouseClick(int y, int x);
     void handleInput(int key);
@@ -47,8 +45,6 @@ private:
     void toggleStatsBox();
     void toggleLogy();
 
-    void printKeyBindings(int y, int x);
-
     // plot commands
     void plotHistogram(TTree*, TLeaf*);
     void plotHistogram(const Console::DrawArgs&);
@@ -56,6 +52,7 @@ private:
 
     // Window refreshing
     void refreshCMDWindow();
+    void helpWindow();
     Console console;
 
     // Ncurses
@@ -84,6 +81,8 @@ private:
 
     // ROOT
     RootFile root_file;
+
+    bool skipDraw = false;
 };
 
 #endif // BROWSER_H

@@ -10,13 +10,17 @@
 #include <TError.h>
 
 // TODO
-// - [ ] Open obvious tree
+// - [x] Open obvious tree
 // - [ ] Make console active tree dependent
-// - [ ] y axis
 // - [ ] histogram spec in drawcall
+// - [ ] y axis
 // - [ ] TH1 plotting
 // - [ ] TH2 plotting
 // - [ ] Tab completion
+// - [ ] Help window <?>
+// - [ ] Console delete fix
+// - [ ] Console horizontal scroll 
+// - [ ] Search
 
 #undef DEBUG
 

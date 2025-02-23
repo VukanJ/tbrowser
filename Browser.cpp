@@ -1,13 +1,15 @@
 #include "Browser.h"
+
 #include <cctype>
 #include <cmath>
 #include <csignal>
 #include <format>
 #include <algorithm>
-#include <ncurses.h>
 #include <string>
 #include <unistd.h>
 #include <unordered_map>
+
+#include <ncurses.h>
 
 #include "RtypesCore.h"
 #include "TTree.h"
@@ -38,11 +40,11 @@ FileBrowser::FileBrowser() {
     initNcurses();
     int sizex = getmaxx(stdscr);
     int sizey = getmaxy(stdscr);
-    createWindow(main_window, sizey - bottom_height, sizex - menu_width, 0, menu_width);
-    createWindow(dir_window, sizey - bottom_height, menu_width, 0, 0);
+    createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
+    createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
     createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 2, 20 + 5);
 
-refresh();
+    refresh();
     box(dir_window, 0, 0);
     box(main_window, 0, 0);
     wrefresh(main_window);
@@ -50,6 +52,7 @@ refresh();
     refreshCMDWindow();
 
     getmaxyx(stdscr, terminal_size_y, terminal_size_x);
+    drawEssentials();
 }
 
 FileBrowser::~FileBrowser() {
@@ -89,6 +92,7 @@ void FileBrowser::loadFile(std::string filename) {
 }
 
 void FileBrowser::printDirectories() {
+    if (skipDraw) { skipDraw = false; return; }
     int x = getbegx(dir_window) + 1;
     int y = getbegy(dir_window) + 1;
     int maxlines = getmaxy(dir_window) - 2;
@@ -280,14 +284,14 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     box(main_window, 0, 0);
     wrefresh(main_window);
     attron(A_ITALIC);
-    attron(A_UNDERLINE);
+    attron(A_BOLD);
     if (logscale) {
-        mvprintw(0, wx+2, "┤ log(%s) ├", leaf->GetTitle());
+        mvprintw(1, wx+2, "┤ log(%s) ├", leaf->GetTitle());
     }
     else {
-        mvprintw(0, wx+2, "┤ %s ├", leaf->GetTitle());
+        mvprintw(1, wx+2, "┤ %s ├", leaf->GetTitle());
     }
-    attroff(A_UNDERLINE);
+    attroff(A_BOLD);
     attroff(A_ITALIC);
 
     // Plot stats
@@ -298,9 +302,6 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
         mvprintw(wy + line++, wx + mainwin_x - 30, "Std:     %.5f", hist.GetStdDev());
         mvprintw(wy + line++, wx + mainwin_x - 30, "Bins:    %i",   bins_x);
     }
-
-    mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
-    printKeyBindings(wy + line++, wx + mainwin_x - 30);
 
     plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
 
@@ -330,7 +331,7 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     }
 
     if (ttree == nullptr) {
-        mvprintw(4, 30, "NO TREE");
+        console.setError("No TTree opened");
         return; // Give up for now
     }
 
@@ -350,6 +351,7 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         entriesDrawn = ttree->Draw(varexp.c_str(), selection.c_str(), option, nentries, firstentry);
     }
     catch (...) {
+        console.setError("TTreeFormula Error");
         return;
     }
 
@@ -467,10 +469,10 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         attron(A_ITALIC);
         attron(A_UNDERLINE);
         if (logscale) {
-            mvprintw(0, wx+2, "┤ log(%s) ├", newhist.GetTitle());
+            mvprintw(1, wx+2, "┤ log(%s) ├", newhist.GetTitle());
         }
         else {
-            mvprintw(0, wx+2, "┤ %s ├", newhist.GetTitle());
+            mvprintw(1, wx+2, "┤ %s ├", newhist.GetTitle());
         }
         attroff(A_UNDERLINE);
         attroff(A_ITALIC);
@@ -484,34 +486,25 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             mvprintw(wy + line++, wx + mainwin_x - 30, "Bins:    %i",   bins_x);
         }
 
-        mvprintw(wy + line++, wx + mainwin_x - 30, "Toggle key bindings <p>");
-        printKeyBindings(wy + line++, wx + mainwin_x - 30);
+        if (newhist.GetEntries() == 0) {
+            attron(A_BOLD);
+            mvprintw(wy + mainwin_y / 2, wx + mainwin_x / 2 - 3, "Empty");
+            attroff(A_BOLD);
+        }
 
         plotAxes(xaxis, wy, wx, mainwin_y, mainwin_x);
+    }
+    else {
+        console.setError("Branch not found");
     }
 
     refresh();
 }
 
-void FileBrowser::printKeyBindings(int y, int x) {
-    int line = y + 2;
-    if (showkeys) {
-        attron(A_UNDERLINE);
-        mvprintw(line++, x, "</> Search branch");
-        mvprintw(line++, x, "<s> Toggle stats box");
-        mvprintw(line++, x, "<d> Enter draw command");
-        mvprintw(line++, x, "<l> Toggle log y");
-        mvprintw(line++, x, "<g> Go to top");
-        mvprintw(line++, x, "<G> Go to bottom");
-        mvprintw(line++, x, "<q/Esc> Quit");
-        attroff(A_UNDERLINE);
-    }
-}
-
-void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, int wx) 
+void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey, int sizex) 
 {
     // Clear line below plot
-    move(wy, 0);
+    move(winy + sizey, 0);
     clrtoeol();
 
     double xmin = ticks.min_adjusted();
@@ -521,7 +514,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
     double rangeX = xmax - xmin;
 
     // Write numbers below axis at tick positions
-    auto nchars = wx - 1;
+    auto nchars = sizex - 1;
     std::vector<char> xaxis_chars(nchars, '-');
     if (ticks.E != 0) { attron(COLOR_PAIR(yellow)); }
     for (int i = 0; i < nBinsX; ++i) {
@@ -536,13 +529,13 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
             // write centered numbers below
             long tick = ticks.values_i[i];
             int ticklen = ticks.values_str[i].size();
-            mvprintw(posy + wy, posx + 1 + charpos - ticklen / 2, "%ld", tick);
+            mvprintw(winy + sizey, winx + 1 + charpos - ticklen / 2, "%ld", tick);
         }
         else {
             // write centered numbers below
             auto num = ticks.values_str[i];
             int ticklen = num.size();
-            mvprintw(posy + wy, posx + 1 + charpos - ticklen / 2, "%s", num.c_str());
+            mvprintw(winy + sizey, winx + 1 + charpos - ticklen / 2, "%s", num.c_str());
         }
         attroff(A_BOLD);
         attroff(A_ITALIC);
@@ -551,13 +544,11 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
     
     // Draw the tick lines
     for (int i = 0; char c : xaxis_chars) {
-        mvprintw(posy + wy - 1, posx + 1 + i++, c == '+' ? "┼" : "─"); 
+        mvprintw(winy + sizey - 1, winx + 1 + i++, c == '+' ? "┼" : "─"); 
     }
-    mvprintw(posy + wy - 1, posx + nchars, "┘");
+    mvprintw(winy + sizey - 1, winx + nchars, "┘");
 
     // Print exponent if needed
-    move(wy + 1, 0);
-    clrtoeol();
     if (ticks.E != 0) {
         attron(COLOR_PAIR(yellow));
 #if USE_UNICODE
@@ -565,7 +556,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int posy, int posx, int wy, i
 #else
         std::string magnitude = std::format("x10^{}", make_superscript(ticks.E));
 #endif
-        mvprintw(posy+wy+1, posx+wx-magnitude.size(), "%s", magnitude.c_str());
+        mvprintw(winy+sizey-1, winx+sizex-magnitude.size()-2, " %s ", magnitude.c_str());
         attroff(COLOR_PAIR(yellow));
     }
 }
@@ -660,10 +651,6 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         case '/':
             mvprintw(30, 30, "SEARCH");
             break;
-        case 'p':
-            toggleKeyBindings();
-            plotHistogram();
-            break;
         case 's':
             toggleStatsBox();
             plotHistogram();
@@ -678,6 +665,10 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
             handleMenuSelect();
             break;
+        case '?':
+            helpWindow();
+            skipDraw = true;
+            break;
         default:
             if (console.validChar(key)) {
                 nonsense.push_back(key);
@@ -686,6 +677,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             break;
     }
     refreshCMDWindow();
+    drawEssentials();
 
     if (!invalid_key) {
         nonsense.clear();
@@ -729,6 +721,11 @@ void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, 
     wrefresh(win);
 }
 
+void FileBrowser::drawEssentials() {
+    std::string help = "Show help <?>";
+    mvprintw(0, getmaxx(stdscr) - help.size(), "%s", help.c_str());
+}
+
 void FileBrowser::handleMenuSelect() {
     auto fetch = root_file.getEntry(selected_pos + menu_scroll_pos);
     if (!fetch.has_value()) {
@@ -745,3 +742,36 @@ void FileBrowser::handleMenuSelect() {
     }
 }
 
+void FileBrowser::helpWindow() {
+    int margin = 6;
+    WINDOW* help = newwin(terminal_size_y - 2*margin, terminal_size_x - 2* margin, margin, margin);
+
+    int line = 0;
+    auto helpline = [&line, &help] (std::string text) {
+        mvwprintw(help, ++line, 2, "%s", text.c_str());
+    };
+
+    helpline(" HELP ");
+    line++;
+    helpline("Show help ............ <?>");
+    helpline("Search branch ........ </>");
+    helpline("Move through menu .... <Arrow keys/Mouse Wheel>");
+    helpline("Open Directory/TTree . <ENTER>");
+    helpline("Toggle stats box ..... <s>");
+    helpline("Enter draw command ... <d>");
+    helpline("Toggle log y ......... <l>");
+    helpline("Go to top ............ <g>");
+    helpline("Go to bottom ......... <G>");
+    helpline("Plot selected ........ <ENTER/LMB>");
+    helpline("Quit ................. <q/Ctrl+C>");
+
+    attron(A_ITALIC);
+    mvprintw(getbegy(help) + getmaxy(help) - 2, getbegy(help) + 1, "Repository: github.com/VukanJ/tbrowser");
+    attroff(A_ITALIC);
+
+    wattron(help, COLOR_PAIR(yellow));
+    box(help, 0, 0);
+    wrefresh(help);
+    wattroff(help, COLOR_PAIR(yellow));
+    delwin(help);
+}

@@ -12,7 +12,10 @@
 enum class NodeType { DIRECTORY, TTREE, TLEAF, HIST, UNKNOWN };
 class RootFile {
 public:
+    RootFile() = default;
     ~RootFile();
+    // Loads and labels a TFile directory structure. Must be called before
+    // everything else
     void load(std::string filename);
 
     // TObject in ROOT file
@@ -20,6 +23,8 @@ public:
     public:
         Node();
         Node(NodeType nt, int idx, Node* mot, int nest);
+
+        // Open/close directory. Toggles content visibility of folders and trees
         void toggleOpenOnClick();
 
         NodeType type; // TObject category
@@ -30,15 +35,20 @@ public:
         enum OpenState {DIR_OPEN = 0b10, LISTED = 0b01, DEFAULT=0b0};
         std::uint8_t openState = DEFAULT;
         int nesting = 0; // for printing
+
     private:
         void recurseOpen(bool open);
     } root_node;
 
     using MenuItem = std::tuple<std::string, Node*>;
+    // Return n-th listed RootFile element
     std::optional<MenuItem> getEntry(int);
     std::vector<MenuItem> displayList;
 
+    // Name (title)
     std::string toString(Node*);
+    
+    // Return number of elements to be displayed in gui
     int menuLength();
 
     // Object address storage

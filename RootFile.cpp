@@ -111,10 +111,9 @@ std::string RootFile::toString(Node* node) {
         title = obj->GetTitle();
         classname = obj->ClassName();
         if (name != title) {
-            return std::format("({}) {} \"{}\" L{} D{}", classname, name, title, 
-                    (node->openState & RootFile::Node::LISTED) > 0, (node->openState & RootFile::Node::DIR_OPEN) > 0);
+            return std::format("({}) {} \"{}\"", classname, name, title);
         }
-        return std::format("({}) {} L{} D{}", classname, name, (node->openState & RootFile::Node::LISTED) > 0, (node->openState & RootFile::Node::DIR_OPEN) > 0);
+        return std::format("({}) {}", classname, name);
     };
     switch (node->type) {
         case NodeType::DIRECTORY: descr = make_name(m_directories[node->index]);  break;
