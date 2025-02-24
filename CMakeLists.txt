@@ -40,9 +40,9 @@ add_executable(${PROGRAM} Main.cpp Browser.cpp AxisTicks.cpp Console.cpp RootFil
 
 # Link against ncurses and ROOT
 if(HAS_STD_FORMAT)
-target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})
+    target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})
 else()
-target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES} fmt::fmt)
+    target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES} fmt::fmt)
 endif()
 
 if(DEFINED USE_UNICODE)

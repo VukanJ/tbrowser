@@ -1,6 +1,7 @@
 #include "Browser.h"
 
 #include <cctype>
+#include <iostream>
 #include <cmath>
 #include <csignal>
 #include <algorithm>
@@ -234,17 +235,26 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
         max = min + 1;
     }
 
+    mvprintw(8, 30, "max %f", max);
+    mvprintw(9, 30, "min %f", min);
     const AxisTicks xaxis(min, max);
     min = xaxis.min_adjusted();
     max = xaxis.max_adjusted();
-
     TH1D hist("H", leafname, bins_x, min, max);
+
+    mvprintw(10, 30, "HIST");
+    mvprintw(11, 30, "name %s", hist.GetName());
+    mvprintw(12, 30, "title %s", hist.GetTitle());
+    mvprintw(13, 30, "max' %f", max);
+    mvprintw(14, 30, "min' %f", min);
+    mvprintw(15, 30, "binsx %i", hist.GetNbinsX());
+    mvprintw(16, 30, "Entries %lld", tree->GetEntries());
 
     tree->Project("H", leafname);
     
     plotASCIIHistogram(winy, winx, &hist, bins_y, bins_x);
     plotCanvasAnnotations(&hist, winy, winx);
-    plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x);
+    plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, false);
 
     refresh();
 }
@@ -357,12 +367,15 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             max = min + 1;
         }
         const AxisTicks xaxis(min, max);
-        min = xaxis.min_adjusted();
-        max = xaxis.max_adjusted();
+        min = xaxis.min();
+        max = xaxis.max();
+        for (int i = 0; i < xaxis.values_d.size(); ++i) {
+            mvprintw(20 + i, 30, "TICK %i %s", i, xaxis.values_str[i].c_str());
+        }
 
         plotASCIIHistogram(winy, winx, &newhist, bins_y, bins_x);
         plotCanvasAnnotations(&newhist, winy, winx);
-        plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x);
+        plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, true);
     }
     else {
         console.setError("Branch not found");
@@ -422,7 +435,7 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
     attron(A_ITALIC);
     attron(A_UNDERLINE);
     if (logscale) {
-        mvprintw(1, winx+2, "┤ log(%s) ├", hist->GetTitle());
+        mvprintw(1, winx+2, "┤ %s (log-y) ├", hist->GetTitle());
     }
     else {
         mvprintw(1, winx+2, "┤ %s ├", hist->GetTitle());
@@ -446,14 +459,22 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
     }
 }
 
-void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey, int sizex) 
+void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey, int sizex, bool force_range) 
 {
     // Clear line below plot
     move(winy + sizey, 0);
     clrtoeol();
 
-    double xmin = ticks.min_adjusted();
-    double xmax = ticks.max_adjusted();
+    double xmin = 0;
+    double xmax = 1;
+    if (force_range) {
+        xmin = ticks.min();
+        xmax = ticks.max();
+    }
+    else {
+        xmin = ticks.min_adjusted();
+        xmax = ticks.max_adjusted();
+    }
 
     auto nBinsX = ticks.nticks;
     double rangeX = xmax - xmin;
@@ -565,7 +586,6 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             if (console.parse()) {
                 plotHistogram();
             }
-            console.clearCommand();
             console.entering_draw_command = false;
         }
         else {
