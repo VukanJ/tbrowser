@@ -239,7 +239,7 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     min = xaxis.min_adjusted();
     max = xaxis.max_adjusted();
 
-    TH1D hist("H", "H", bins_x, min, max);
+    TH1D hist("H", leafname, bins_x, min, max);
 
     tree->Project("H", leafname);
     
@@ -718,10 +718,11 @@ void FileBrowser::helpWindow() {
     mvwprintw(help, ++line, 53, "Terminal capabilities");
     attroff(A_UNDERLINE);
     line++;
-    mvwprintw(help, ++line, 53, "Color support: ........... %s", has_colors() ? "YES" : "NO");
-    mvwprintw(help, ++line, 53, "Extended color support: .. %s", can_change_color() ? "YES" : "NO");
+    mvwprintw(help, ++line, 53, "Color support: ........... %s (required)", has_colors() ? "YES" : "NO");
+    mvwprintw(help, ++line, 53, "Extended color support: .. %s (required)", can_change_color() ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Compiled with unicode: ... %s", USE_UNICODE == 1 ? "YES" : "NO");
-    mvwprintw(help, ++line, 53, "Terminal colors: ......... %i", tigetnum("colors"));
+    mvwprintw(help, ++line, 53, "Terminal colors: ......... %i (needs 256)", tigetnum("colors"));
+    mvwprintw(help, ++line, 53, "Box characters ........... ▖,▗,▄,▌,▐,▙,▟,█ (required)");
 
     attron(A_ITALIC);
     mvprintw(getbegy(help) + getmaxy(help) - 2, getbegy(help) + 1, "Repository: github.com/VukanJ/tbrowser");

@@ -11,6 +11,7 @@
 
 // TODO
 // - [x] Open obvious tree
+// - [ ] Fix menu scroll
 // - [ ] Make console active tree dependent
 // - [ ] histogram spec in drawcall
 // - [ ] y axis

@@ -153,7 +153,7 @@ void RootFile::traverseTFile(TDirectory* dir, RootFile::Node* node, int depth) {
         }
         else {
             m_unclassified.push_back(dynamic_cast<TObject*>(obj));
-            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::UNKNOWN, -1, node, depth));
+            node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::UNKNOWN, m_unclassified.size() - 1, node, depth));
         }
     }
 }
