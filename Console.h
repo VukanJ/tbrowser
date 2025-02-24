@@ -9,7 +9,13 @@
 
 class Console {
 public:
-    using DrawArgs = std::tuple<std::string, std::string, Option_t*, Long64_t, Long64_t>; // TTreePlayerArgs
+    struct FirstDrawArg {
+        FirstDrawArg(std::string ex);
+        std::string expression;
+        std::vector<double> limits;
+        int invalid_limits = 0;
+    };
+    using DrawArgs = std::tuple<FirstDrawArg, std::string, Option_t*, Long64_t, Long64_t>; // TTreePlayerArgs
     Console();
     void handleInput(int);
     bool validChar(int);

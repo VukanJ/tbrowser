@@ -2,12 +2,47 @@
 #include "TVirtualTreePlayer.h"
 #include <ncurses.h>
 #include <stdexcept>
+#include <iostream>
 #include <algorithm>
 #include "definitions.h"
 
 Console::Console() {
     std::string chars = " \",._<>()[]=!&|?+-*/%:@$";
     for (char c : chars) allowed_chars.insert(c);
+}
+
+Console::FirstDrawArg::FirstDrawArg(std::string ex) {
+    // Unpack a specification like "var1+var2>>(0, 1, 2, 6)"
+    auto beg = ex.find(">>(");
+    if (beg == ex.npos) {
+        expression = ex;
+    }
+    else {
+        expression = ex.substr(0, beg);
+        std::string num;
+        for (std::size_t i = beg + 3; i < ex.size(); ++i) {
+            if (isdigit(ex[i]) || ex[i] == '.' || ex[i] == '-') {
+                num += ex[i];
+            }
+            else if (!num.empty()) {
+                limits.push_back(stod(num));
+                num.clear();
+            }
+        }
+    }
+    if (limits.size() == 2) {
+        if (limits[0] >= limits[1]) {
+            invalid_limits = 1;
+        }
+    }
+    else if (limits.size() == 4) {
+        if (limits[0] >= limits[1] || limits[2] >= limits[3]) {
+            invalid_limits = 1;
+        }
+    }
+    else if (limits.size() != 0) {
+        invalid_limits = 2;
+    }
 }
 
 bool Console::parse() {
@@ -22,7 +57,7 @@ bool Console::parse() {
     }
 
     curs_offset = 0;
-    current_args = {"", "", "goff", TVirtualTreePlayer::kMaxEntries, 0};
+    current_args = {{""}, "", "goff", TVirtualTreePlayer::kMaxEntries, 0};
 
     // Tokenize string by comma
     std::vector<std::string> tokens {""};
@@ -62,31 +97,41 @@ bool Console::parse() {
     // Parse entries, do basic checks
     auto ntokens = tokens.size();
     bool valid = true;
-    if (ntokens >= 1) { std::get<0>(current_args) = tokens[0].c_str(); }
-    if (ntokens >= 2) { std::get<1>(current_args) = tokens[1].c_str(); }
-    if (ntokens >= 3) { std::get<2>(current_args) = tokens[2].c_str(); }
-    try {
-        if (ntokens >= 4) { std::get<3>(current_args) = std::stoll(tokens[3]); }
-    }
-    catch (std::invalid_argument& err) {
-        last_error = fmtstring("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
+    if (ntokens >= 1) { std::get<0>(current_args) = FirstDrawArg(tokens[0].c_str()); }
+    if (std::get<0>(current_args).invalid_limits == 1) {
+        last_error = "Invalid hist limits: min < max is required.";
         valid = false;
     }
-    catch (std::out_of_range& err) {
-        last_error = fmtstring("Argument 4 (nentries) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
+    else if (std::get<0>(current_args).invalid_limits == 2) {
+        last_error = "Fixed binning! Specify 2 or 4 limit arguments for X and Y.";
         valid = false;
     }
+    else {
+        if (ntokens >= 2) { std::get<1>(current_args) = tokens[1].c_str(); }
+        if (ntokens >= 3) { std::get<2>(current_args) = tokens[2].c_str(); }
+        try {
+            if (ntokens >= 4) { std::get<3>(current_args) = std::stoll(tokens[3]); }
+        }
+        catch (std::invalid_argument& err) {
+            last_error = fmtstring("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
+            valid = false;
+        }
+        catch (std::out_of_range& err) {
+            last_error = fmtstring("Argument 4 (nentries) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
+            valid = false;
+        }
 
-    try {
-        if (ntokens >= 5) { std::get<4>(current_args) = std::stoll(tokens[4]); }
-    }
-    catch (std::invalid_argument& err) { 
-        last_error = fmtstring("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
-        valid = false;
-    }
-    catch (std::out_of_range& err) {
-        last_error = fmtstring("Argument 5 (firstentry) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
-        valid = false;
+        try {
+            if (ntokens >= 5) { std::get<4>(current_args) = std::stoll(tokens[4]); }
+        }
+        catch (std::invalid_argument& err) { 
+            last_error = fmtstring("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
+            valid = false;
+        }
+        catch (std::out_of_range& err) {
+            last_error = fmtstring("Argument 5 (firstentry) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
+            valid = false;
+        }
     }
 
     has_command = valid;

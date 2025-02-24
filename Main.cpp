@@ -6,6 +6,7 @@
 
 #include <ncurses.h>
 #include "Browser.h"
+#include "Console.h"
 #include "AxisTicks.h"
 #include <TError.h>
 
@@ -37,8 +38,8 @@ int main (int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    RootFile rfile;
-    rfile.load("build/ntuple.root");
+    Console::FirstDrawArg fa("B0_M>>(100, 5000, 6000))");
+    
 #else
     if (argc == 2) {
         if (std::filesystem::exists(argv[1])) {

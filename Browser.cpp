@@ -286,11 +286,12 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         return; // Give up for now
     }
 
-    mvprintw(4, 30, "A1 %s", varexp.c_str());
-    mvprintw(5, 30, "A2 %s", selection.c_str());
-    mvprintw(6, 30, "A3 %s", option);
-    mvprintw(7, 30, "A4 %lld", nentries);
-    mvprintw(8, 30, "A5 %lld", firstentry);
+    int debug = 4;
+    mvprintw(debug++, 30, "A1 %s", varexp.expression.c_str());
+    mvprintw(debug++, 30, "A2 %s", selection.c_str());
+    mvprintw(debug++, 30, "A3 %s", option);
+    mvprintw(debug++, 30, "A4 %lld", nentries);
+    mvprintw(debug++, 30, "A5 %lld", firstentry);
 
     // Get bounds
     auto bins_x = 2 * mainwin_x - 4;  // Border has width of 4 bins
@@ -299,7 +300,7 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     ttree->SetEstimate(ttree->GetEntries());
     Long64_t entriesDrawn = -1;
     try {
-        entriesDrawn = ttree->Draw(varexp.c_str(), selection.c_str(), option, nentries, firstentry);
+        entriesDrawn = ttree->Draw(varexp.expression.c_str(), selection.c_str(), option, nentries, firstentry);
     }
     catch (...) {
         console.setError("TTreeFormula Error");
@@ -319,10 +320,10 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         return nullptr;
     };
 
-    if (TLeaf* lenLeaf = vector_branches(varexp.c_str()); lenLeaf != nullptr && false) {
+    if (TLeaf* lenLeaf = vector_branches(varexp.expression.c_str()); lenLeaf != nullptr && false) {
         // AFAIK, an efficient loop is required now
         // SKIP!
-        TTreeFormula formula("FORM", varexp.c_str(), ttree);
+        TTreeFormula formula("FORM", varexp.expression.c_str(), ttree);
         auto nEntriesTop = ttree->GetEntries();
         Long64_t len;
         ttree->SetBranchStatus(lenLeaf->GetName(), 1);
@@ -341,22 +342,27 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
 
         std::string title;
         if (selection.empty()) {
-            title = varexp;
+            title = varexp.expression;
         }
         else {
-            title = fmtstring("{} ({})", varexp, selection);
+            title = fmtstring("{} ({})", varexp.expression, selection);
         }
 
-        TH1D newhist("TEMP", title.c_str(), bins_x, min, max);
-        newhist.FillN(n, data, nullptr);
-        newhist.Draw("goff");
+        TH1D hist;
+        if (!varexp.limits.empty()) {
+            min = varexp.limits.at(0);
+            max = varexp.limits.at(1);
+        }
+        hist = TH1D("TEMP", title.c_str(), bins_x, min, max);
+        hist.FillN(n, data, nullptr);
+        hist.Draw("goff");
 
         mvprintw(10, 30, "HIST");
-        mvprintw(11, 30, "name %s", newhist.GetName());
-        mvprintw(12, 30, "title %s", newhist.GetTitle());
+        mvprintw(11, 30, "name %s", hist.GetName());
+        mvprintw(12, 30, "title %s", hist.GetTitle());
         mvprintw(13, 30, "max %f", max);
         mvprintw(14, 30, "min %f", min);
-        mvprintw(15, 30, "binsx %i", newhist.GetNbinsX());
+        mvprintw(15, 30, "binsx %i", hist.GetNbinsX());
         mvprintw(16, 30, "processed %lld", ttree->GetSelectedRows());
         mvprintw(17, 30, "n %lld", n);
         mvprintw(18, 30, "Entries %lld", ttree->GetEntries());
@@ -370,8 +376,8 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         min = xaxis.min();
         max = xaxis.max();
 
-        plotASCIIHistogram(winy, winx, &newhist, bins_y, bins_x);
-        plotCanvasAnnotations(&newhist, winy, winx);
+        plotASCIIHistogram(winy, winx, &hist, bins_y, bins_x);
+        plotCanvasAnnotations(&hist, winy, winx);
         plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, true);
     }
     else {
