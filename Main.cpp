@@ -55,7 +55,14 @@ int main (int argc, char* argv[]) {
 #endif
     // Initial window setup
     FileBrowser browser;
-    browser.loadFile(filename.c_str());
+    try {
+        browser.loadFile(filename.c_str());
+    }
+    catch (std::runtime_error& error) {
+        endwin();
+        std::cerr << error.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 
     MEVENT mouse_event;
 

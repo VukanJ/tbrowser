@@ -1,6 +1,7 @@
 #include "RootFile.h"
 #include "TKey.h"
 #include <numeric>
+#include <iostream>
 
 RootFile::Node::Node() : type(NodeType::UNKNOWN), index(-1) { }
 
@@ -161,7 +162,7 @@ void RootFile::traverseTFile(TDirectory* dir, RootFile::Node* node, int depth) {
 void RootFile::traverseTFile(std::string& filename) {
     m_tfile = std::unique_ptr<TFile>(TFile::Open(filename.c_str(), "READ"));
     if (!m_tfile || m_tfile->IsZombie()) {
-        return;
+        throw std::runtime_error("Not a root file or broken file");
     }
 
     m_directories.push_back(m_tfile.get());
