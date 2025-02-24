@@ -2,6 +2,7 @@
 #include "TVirtualTreePlayer.h"
 #include <ncurses.h>
 #include <stdexcept>
+#include <stack>
 #include <iostream>
 #include <algorithm>
 #include "definitions.h"
@@ -63,13 +64,14 @@ bool Console::parse() {
     std::vector<std::string> tokens {""};
 
     // interpret varexp
+    int offset = 0;
     if (string_contains(current_input, ">>(")) {
         // User is specifying histogram
         // "var1>>(100, 10, 100, 1000, 0, 1)" can be the first token
         auto start_hist_spec = current_input.find(">>(");
         auto end_hist_spec = current_input.find(")", start_hist_spec);
         tokens.back() = current_input.substr(0, end_hist_spec + 1);
-        current_input = current_input.substr(end_hist_spec + 1);
+        offset = end_hist_spec;
     }
     if (string_contains(current_input, ":")) {
         if (std::count(current_input.begin(), current_input.end(), ':') > 1) {
@@ -81,12 +83,12 @@ bool Console::parse() {
         // User is specifying 2D dimensional hist
     }
 
-    for (auto c : current_input) {
-        if (c == ',') {
+    for (std::size_t c = offset; c < current_input.size(); ++c) {
+        if (current_input[c] == ',') {
             tokens.emplace_back();
         }
         else {
-            tokens.back() += c;
+            tokens.back() += current_input[c];
         }
     }
     for (int i = 0; auto t : tokens) {
