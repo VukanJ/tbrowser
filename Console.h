@@ -13,7 +13,15 @@ public:
         FirstDrawArg(std::string ex);
         std::string expression;
         std::vector<double> limits;
-        int invalid_limits = 0;
+        enum class LimitError {
+            NoError,
+            LimitOrdering,
+            LimitNumber,
+            No3DHists,
+            InsufficientLimits
+        };
+        LimitError error_code = LimitError::NoError;
+        bool hist2d = false;
     };
     using DrawArgs = std::tuple<FirstDrawArg, std::string, Option_t*, Long64_t, Long64_t>; // TTreePlayerArgs
     Console();

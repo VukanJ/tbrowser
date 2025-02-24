@@ -1,5 +1,6 @@
 #include "Console.h"
 #include "TVirtualTreePlayer.h"
+#include <cmath>
 #include <ncurses.h>
 #include <stdexcept>
 #include <stack>
@@ -33,16 +34,29 @@ Console::FirstDrawArg::FirstDrawArg(std::string ex) {
     }
     if (limits.size() == 2) {
         if (limits[0] >= limits[1]) {
-            invalid_limits = 1;
+            error_code = LimitError::LimitOrdering;
         }
     }
     else if (limits.size() == 4) {
         if (limits[0] >= limits[1] || limits[2] >= limits[3]) {
-            invalid_limits = 1;
+            error_code = LimitError::LimitOrdering;
         }
     }
     else if (limits.size() != 0) {
-        invalid_limits = 2;
+        error_code = LimitError::LimitNumber;
+    }
+
+    int ncolon = std::count(expression.begin(), expression.end(), ':');
+    if (ncolon > 0) {
+        if (ncolon > 1) {
+            error_code = LimitError::No3DHists;
+        }
+        else if (!limits.empty() && limits.size() != 4) {
+            error_code = LimitError::InsufficientLimits;
+        }
+        else {
+            hist2d = true;
+        }
     }
 }
 
@@ -70,17 +84,13 @@ bool Console::parse() {
         // "var1>>(100, 10, 100, 1000, 0, 1)" can be the first token
         auto start_hist_spec = current_input.find(">>(");
         auto end_hist_spec = current_input.find(")", start_hist_spec);
-        tokens.back() = current_input.substr(0, end_hist_spec + 1);
-        offset = end_hist_spec;
-    }
-    if (string_contains(current_input, ":")) {
-        if (std::count(current_input.begin(), current_input.end(), ':') > 1) {
-            // Cannot handle 3D hists
-            last_error = "Cannot plot 3D histograms :(";
+        if (end_hist_spec == current_input.npos) {
+            last_error = "Syntax error";
             has_command = false;
             return false;
         }
-        // User is specifying 2D dimensional hist
+        tokens.back() = current_input.substr(0, end_hist_spec + 1);
+        offset = end_hist_spec;
     }
 
     for (std::size_t c = offset; c < current_input.size(); ++c) {
@@ -100,40 +110,52 @@ bool Console::parse() {
     auto ntokens = tokens.size();
     bool valid = true;
     if (ntokens >= 1) { std::get<0>(current_args) = FirstDrawArg(tokens[0].c_str()); }
-    if (std::get<0>(current_args).invalid_limits == 1) {
-        last_error = "Invalid hist limits: min < max is required.";
-        valid = false;
+    
+    switch (std::get<0>(current_args).error_code) {
+        case FirstDrawArg::LimitError::NoError: break;
+        case FirstDrawArg::LimitError::LimitOrdering: 
+            last_error = "Invalid hist limits: min < max is required."; 
+            break;
+        case FirstDrawArg::LimitError::LimitNumber: 
+            last_error = "Fixed binning! Specify 2 or 4 limit arguments for X and Y."; 
+            break;
+        case FirstDrawArg::LimitError::No3DHists:
+            last_error = "Cannot draw 3D histograms :("; 
+            break;
+        case FirstDrawArg::LimitError::InsufficientLimits: 
+            last_error = "Zero or Four limits are required to draw a 2d histogram "; 
+            break;
     }
-    else if (std::get<0>(current_args).invalid_limits == 2) {
-        last_error = "Fixed binning! Specify 2 or 4 limit arguments for X and Y.";
-        valid = false;
+    valid = std::get<0>(current_args).error_code == FirstDrawArg::LimitError::NoError;
+    if (!valid) {
+        has_command = false;
+        return valid;
     }
-    else {
-        if (ntokens >= 2) { std::get<1>(current_args) = tokens[1].c_str(); }
-        if (ntokens >= 3) { std::get<2>(current_args) = tokens[2].c_str(); }
-        try {
-            if (ntokens >= 4) { std::get<3>(current_args) = std::stoll(tokens[3]); }
-        }
-        catch (std::invalid_argument& err) {
-            last_error = fmtstring("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
-            valid = false;
-        }
-        catch (std::out_of_range& err) {
-            last_error = fmtstring("Argument 4 (nentries) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
-            valid = false;
-        }
 
-        try {
-            if (ntokens >= 5) { std::get<4>(current_args) = std::stoll(tokens[4]); }
-        }
-        catch (std::invalid_argument& err) { 
-            last_error = fmtstring("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
-            valid = false;
-        }
-        catch (std::out_of_range& err) {
-            last_error = fmtstring("Argument 5 (firstentry) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
-            valid = false;
-        }
+    if (ntokens >= 2) { std::get<1>(current_args) = tokens[1].c_str(); }
+    if (ntokens >= 3) { std::get<2>(current_args) = tokens[2].c_str(); }
+    try {
+        if (ntokens >= 4) { std::get<3>(current_args) = std::stoll(tokens[3]); }
+    }
+    catch (std::invalid_argument& err) {
+        last_error = fmtstring("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
+        valid = false;
+    }
+    catch (std::out_of_range& err) {
+        last_error = fmtstring("Argument 4 (nentries) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
+        valid = false;
+    }
+
+    try {
+        if (ntokens >= 5) { std::get<4>(current_args) = std::stoll(tokens[4]); }
+    }
+    catch (std::invalid_argument& err) { 
+        last_error = fmtstring("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
+        valid = false;
+    }
+    catch (std::out_of_range& err) {
+        last_error = fmtstring("Argument 5 (firstentry) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
+        valid = false;
     }
 
     has_command = valid;
