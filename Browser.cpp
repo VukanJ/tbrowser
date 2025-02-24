@@ -352,10 +352,20 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         if (!varexp.limits.empty()) {
             min = varexp.limits.at(0);
             max = varexp.limits.at(1);
+            hist = TH1D("TEMP", title.c_str(), bins_x, min, max);
+            for (int i = 0; i < n; ++i) {
+                if (data[i] >= min && data[i] <= max) {
+                    hist.Fill(data[i]);
+                }
+            }
+            hist.Draw("goff");
         }
-        hist = TH1D("TEMP", title.c_str(), bins_x, min, max);
-        hist.FillN(n, data, nullptr);
-        hist.Draw("goff");
+        else {
+            hist = TH1D("TEMP", title.c_str(), bins_x, min, max);
+            hist.FillN(n, data, nullptr);
+            hist.Draw("goff");
+        }
+
 
         mvprintw(10, 30, "HIST");
         mvprintw(11, 30, "name %s", hist.GetName());
