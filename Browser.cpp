@@ -369,9 +369,6 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         const AxisTicks xaxis(min, max);
         min = xaxis.min();
         max = xaxis.max();
-        for (int i = 0; i < xaxis.values_d.size(); ++i) {
-            mvprintw(20 + i, 30, "TICK %i %s", i, xaxis.values_str[i].c_str());
-        }
 
         plotASCIIHistogram(winy, winx, &newhist, bins_y, bins_x);
         plotCanvasAnnotations(&newhist, winy, winx);
@@ -433,14 +430,14 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
     box(main_window, 0, 0);
     wrefresh(main_window);
     attron(A_ITALIC);
-    attron(A_UNDERLINE);
+    attron(A_BOLD);
     if (logscale) {
         mvprintw(1, winx+2, "┤ %s (log-y) ├", hist->GetTitle());
     }
     else {
         mvprintw(1, winx+2, "┤ %s ├", hist->GetTitle());
     }
-    attroff(A_UNDERLINE);
+    attroff(A_BOLD);
     attroff(A_ITALIC);
 
     // Plot stats

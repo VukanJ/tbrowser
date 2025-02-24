@@ -108,14 +108,26 @@ std::string RootFile::toString(Node* node) {
     std::string name;
     std::string title;
     std::string classname;
-    auto make_name = [&name, &title, &classname, &node](TObject* obj){
+    auto make_name = [this, &name, &title, &classname, &node](TObject* obj){
         name = obj->GetName();
         title = obj->GetTitle();
         classname = obj->ClassName();
-        if (name != title) {
-            return fmtstring("({}) {} \"{}\"", classname, name, title);
+        
+        Long64_t nEntries = -1;
+        if (node->type == NodeType::TTREE) {
+            nEntries = m_trees[node->index]->GetEntriesFast();
         }
-        return fmtstring("({}) {}", classname, name);
+
+        std::string info;
+
+        info = fmtstring("({}) {}", classname, name);
+        if (!title.empty() && name != title) {
+            info += fmtstring(" \"{}\"", title);
+        }
+        if (nEntries > -1) {
+            info += fmtstring(", Entries: {}", nEntries);
+        }
+        return info;
     };
     switch (node->type) {
         case NodeType::DIRECTORY: descr = make_name(m_directories[node->index]);  break;
