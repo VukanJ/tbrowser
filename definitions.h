@@ -60,7 +60,8 @@ inline std::unordered_map<ASCII_code, ASCII> ascii_map = {
 };
 
 enum color {
-    blue=1, green, red, white, yellow, white_on_blue, whiteblue, grayscale_start
+    blue=1, green, red, white, yellow, white_on_blue, whiteblue, 
+    grayscale_start, grayscale_end=grayscale_start+24
 };
 
 #ifndef USE_UNICODE

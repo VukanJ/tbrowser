@@ -11,9 +11,12 @@
 
 #include <ncurses.h>
 
+#include "Console.h"
 #include "RtypesCore.h"
 #include "TTree.h"
 #include "TTreeFormula.h"
+#include "TH1.h"
+#include "TH2.h"
 
 #include "AxisTicks.h"
 #include "RootFile.h"
@@ -201,7 +204,12 @@ void FileBrowser::toggleLogy() {
 void FileBrowser::plotHistogram() {
     // Get currently active TTree
     if (console.hasCommand()) {
-        plotHistogram(console.current_args);
+        if (std::get<0>(console.current_args).hist2d) {
+            plot2DHistogram(console.current_args);
+        }
+        else {
+            plotHistogram(console.current_args);
+        }
     }
     else {
         std::size_t entry = selected_pos + menu_scroll_pos;
@@ -397,6 +405,150 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     refresh();
 }
 
+void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
+    // The console has already checked whether the format is correct for 2D drawing
+    // Get window position and size
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
+    getmaxyx(main_window, mainwin_y, mainwin_x);
+    box(main_window, 0, 0);
+
+    auto& [varexp, selection, option, nentries, firstentry] = args;
+
+    // Get selected tree
+    TTree* ttree = nullptr;
+    std::size_t entry = selected_pos + menu_scroll_pos;
+    if (entry < root_file.displayList.size()) {
+        auto [name, node] = root_file.displayList.at(entry);
+        if (node->type == NodeType::TLEAF) {
+            ttree = root_file.m_trees[node->mother->index];
+        }
+        else if (node->type == NodeType::TTREE) {
+            ttree = root_file.m_trees[node->index];
+        }
+    }
+
+    if (ttree == nullptr) {
+        console.setError("No TTree opened");
+        return; // Give up for now
+    }
+
+    // Get bounds
+    auto bins_x = mainwin_x - 2;  // Border has width of 2 bins
+    auto bins_y = mainwin_y - 2;
+
+    ttree->SetEstimate(ttree->GetEntries());
+    Long64_t entriesDrawn = -1;
+    try {
+        entriesDrawn = ttree->Draw(varexp.expression.c_str(), selection.c_str(), option, nentries, firstentry);
+    }
+    catch (...) {
+        console.setError("TTreeFormula Error");
+        return;
+    }
+
+    auto vector_branches = [ttree] (const char* form) -> TLeaf* {
+        // Check if formula involves vector branches
+        TTreeFormula formula("FORM", form, ttree);
+        for (int v = 0; v < formula.GetNdim(); ++v) {
+            if (TLeaf* leaf = formula.GetLeaf(v)->GetLeafCount(); leaf != nullptr) {
+                formula.Delete();
+                return leaf;
+            }
+        }
+        formula.Delete();
+        return nullptr;
+    };
+
+    if (TLeaf* lenLeaf = vector_branches(varexp.expression.c_str()); lenLeaf != nullptr && false) {
+        // AFAIK, an efficient loop is required now
+        // SKIP!
+        TTreeFormula formula("FORM", varexp.expression.c_str(), ttree);
+        auto nEntriesTop = ttree->GetEntries();
+        Long64_t len;
+        ttree->SetBranchStatus(lenLeaf->GetName(), 1);
+        ttree->SetBranchAddress(lenLeaf->GetName(), &len);
+        for (int i = 0; i < nEntriesTop; ++i) {
+            ttree->GetEntry(i);
+
+        }
+    }
+    else if (entriesDrawn != -1) {
+        Double_t* data_x = ttree->GetV1();
+        Double_t* data_y = ttree->GetV2();
+        // This is a hack
+        Long64_t n = std::min<Long64_t>(ttree->GetSelectedRows(), ttree->GetEntries());
+        Double_t minx = *std::min_element(data_x, data_x + n);
+        Double_t miny = *std::min_element(data_y, data_y + n);
+        Double_t maxx = *std::max_element(data_x, data_x + n);
+        Double_t maxy = *std::max_element(data_y, data_y + n);
+
+        std::string title;
+        if (selection.empty()) {
+            title = varexp.expression;
+        }
+        else {
+            title = fmtstring("{} ({})", varexp.expression, selection);
+        }
+
+        TH2D hist2d;
+        if (!varexp.limits.empty()) {
+            minx = varexp.limits.at(0);
+            maxx = varexp.limits.at(1);
+            miny = varexp.limits.at(2);
+            maxy = varexp.limits.at(3);
+            hist2d = TH2D("TEMP", title.c_str(), bins_x, minx, maxx, bins_y, miny, maxy);
+            for (int i = 0; i < n; ++i) {
+                if (data_x[i] >= minx && data_x[i] <= maxx && data_y[i] >= miny && data_y[i] <= maxy) {
+                    hist2d.Fill(data_x[i], data_y[i]);
+                }
+            }
+            hist2d.Draw("goff");
+        }
+        else {
+            hist2d = TH2D("TEMP", title.c_str(), bins_x, minx, maxx, bins_y, miny, maxy);
+            hist2d.FillN(n, data_x, data_y, nullptr);
+            hist2d.Draw("goff");
+        }
+
+        /* mvprintw(10, 30, "HIST"); */
+        /* mvprintw(11, 30, "name %s", hist.GetName()); */
+        /* mvprintw(12, 30, "title %s", hist.GetTitle()); */
+        /* mvprintw(13, 30, "max %f", max); */
+        /* mvprintw(14, 30, "min %f", min); */
+        /* mvprintw(15, 30, "binsx %i", hist.GetNbinsX()); */
+        /* mvprintw(16, 30, "processed %lld", ttree->GetSelectedRows()); */
+        /* mvprintw(17, 30, "n %lld", n); */
+        /* mvprintw(18, 30, "Entries %lld", ttree->GetEntries()); */
+        /* mvprintw(19, 30, "first %f", data[0]); */
+        if (minx == maxx) {
+            // Handle single value histograms
+            minx = minx - 1;
+            maxx = minx + 1;
+        }
+        if (miny == maxy) {
+            // Handle single value histograms
+            miny = miny - 1;
+            maxy = miny + 1;
+        }
+        const AxisTicks xaxis(minx, maxx);
+        const AxisTicks yaxis(miny, maxy);
+        minx = xaxis.min();
+        maxx = xaxis.max();
+        miny = yaxis.min();
+        maxy = yaxis.max();
+
+        plotASCIIHistogram2D(winy, winx, &hist2d, bins_y, bins_x);
+        plotCanvasAnnotations(&hist2d, winy, winx);
+        plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, true);
+    }
+    else {
+        console.setError("Branch not found");
+    }
+
+    refresh();
+}
+
 void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx) {
     double max_height = hist->GetAt(hist->GetMaximumBin())*1.1;
     double pixel_y = max_height / binsy;
@@ -439,6 +591,24 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
         }
     }
     attroff(COLOR_PAIR(1));
+}
+
+void FileBrowser::plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx) {
+    double max_height = hist->GetAt(hist->GetMaximumBin())*1.1;
+    auto size_y = getmaxy(main_window);
+
+    wclear(main_window);
+    // Draw ASCII art
+    for (int x = 0; x < binsx; x++) {
+        for (int y = 0; y < binsy; y++) {
+            auto Z = hist->GetBinContent(x, y);
+            auto pixel_color = std::lerp(grayscale_start, grayscale_end + 1, Z / max_height);
+            attron(COLOR_PAIR(pixel_color));
+            mvprintw(size_y - y + winy, x + winx + 1, "█");
+            attroff(COLOR_PAIR(pixel_color));
+        }
+    }
+    wrefresh(main_window);
 }
 
 void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {

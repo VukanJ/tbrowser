@@ -5,6 +5,8 @@
 
 #include "TTree.h"
 #include "TLeaf.h"
+#include "TH1.h"
+#include "TH2.h"
 
 #include "AxisTicks.h"
 #include "Console.h"
@@ -48,9 +50,11 @@ private:
     // plot commands
     void plotHistogram(TTree*, TLeaf*);
     void plotHistogram(const Console::DrawArgs&);
+    void plot2DHistogram(const Console::DrawArgs&);
     void plotAxes(const AxisTicks&, int, int, int, int, bool force_range);
     void plotCanvasAnnotations(TH1* hist, int winy, int winx);
     void plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx);
+    void plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx);
 
     // Window refreshing
     void refreshCMDWindow();

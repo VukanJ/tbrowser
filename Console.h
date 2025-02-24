@@ -13,7 +13,7 @@ public:
         FirstDrawArg(std::string ex);
         std::string expression;
         std::vector<double> limits;
-        enum class LimitError {
+       enum class LimitError {
             NoError,
             LimitOrdering,
             LimitNumber,
