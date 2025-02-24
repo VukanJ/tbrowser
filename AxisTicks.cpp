@@ -1,5 +1,6 @@
 #include "AxisTicks.h"
 #include "TAxis.h"
+#include "definitions.h"
 #include <cmath>
 #include <ncurses.h>
 #include <cassert>
@@ -102,7 +103,7 @@ AxisTicks::AxisTicks(double min, double max)
     }
     else {
         for (auto v : values_d) {
-            values_str.push_back(std::format("{:.7g}", v));
+            values_str.push_back(fmtstring("{:.7g}", v));
         }
     }
 

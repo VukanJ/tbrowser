@@ -3,7 +3,6 @@
 #include <cctype>
 #include <cmath>
 #include <csignal>
-#include <format>
 #include <algorithm>
 #include <string>
 #include <unistd.h>
@@ -115,15 +114,15 @@ void FileBrowser::printDirectories() {
         switch (node->type) {
             case NodeType::DIRECTORY:
                 if (node->openState & RootFile::Node::DIR_OPEN) 
-                    { entry_label = std::format("{} {}", SYMB_FOLDER_OPEN, name); }
+                    { entry_label = fmtstring("{} {}", SYMB_FOLDER_OPEN, name); }
                 else
-                    { entry_label = std::format("{} {}", SYMB_FOLDER_CLOSED, name); }
+                    { entry_label = fmtstring("{} {}", SYMB_FOLDER_CLOSED, name); }
                 col = yellow;
                 break;
-            case NodeType::TLEAF:   entry_label = std::format("{} {}", SYMB_TLEAF, name); attr = A_ITALIC; break;
-            case NodeType::TTREE:   entry_label = std::format("{} {}", SYMB_TTREE, name); col = green; attr = A_BOLD; break;
-            case NodeType::HIST:    entry_label = std::format("{} {}", SYMB_THIST, name); col = blue; attr = A_ITALIC; break;
-            case NodeType::UNKNOWN: entry_label = std::format("{} {}", SYMB_TUNKNOWN, name); col = red; break;
+            case NodeType::TLEAF:   entry_label = fmtstring("{} {}", SYMB_TLEAF, name); attr = A_ITALIC; break;
+            case NodeType::TTREE:   entry_label = fmtstring("{} {}", SYMB_TTREE, name); col = green; attr = A_BOLD; break;
+            case NodeType::HIST:    entry_label = fmtstring("{} {}", SYMB_THIST, name); col = blue; attr = A_ITALIC; break;
+            case NodeType::UNKNOWN: entry_label = fmtstring("{} {}", SYMB_TUNKNOWN, name); col = red; break;
         }
         attron(COLOR_PAIR(col));
         attron(attr);
@@ -335,7 +334,7 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             title = varexp;
         }
         else {
-            title = std::format("{} ({})", varexp, selection);
+            title = fmtstring("{} ({})", varexp, selection);
         }
 
         TH1D newhist("TEMP", title.c_str(), bins_x, min, max);
@@ -498,9 +497,9 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey
     if (ticks.E != 0) {
         attron(COLOR_PAIR(yellow));
 #if USE_UNICODE
-        std::string magnitude = std::format("x10{}", make_superscript(ticks.E));
+        std::string magnitude = fmtstring("x10{}", make_superscript(ticks.E));
 #else
-        std::string magnitude = std::format("x10^{}", make_superscript(ticks.E));
+        std::string magnitude = fmtstring("x10^{}", make_superscript(ticks.E));
 #endif
         mvprintw(winy+sizey-1, winx+sizex-magnitude.size()-2, " %s ", magnitude.c_str());
         attroff(COLOR_PAIR(yellow));

@@ -4,6 +4,25 @@
 #include <cstdint>
 #include <unordered_map>
 
+#ifndef NATIVE_FORMAT
+#define NATIVE_FORMAT 1
+#endif
+#if NATIVE_FORMAT==1
+    #include <format>
+    #define fmtstring(...) std::format(__VA_ARGS__)
+#else
+    #include <fmt/core.h>
+    #define fmtstring(...) fmt::format(__VA_ARGS__)
+#endif
+
+inline bool string_contains(const std::string& str, const std::string& x) {
+#if __cplusplus>=202302L
+    return str.contains(x);
+#else
+    return str.find(x) != str.npos;
+#endif
+}
+
 enum ASCII : std::uint8_t {
     LOWER_LEFT,
     LOWER_RIGHT,

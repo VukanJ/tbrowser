@@ -1,5 +1,6 @@
 #include "RootFile.h"
 #include "TKey.h"
+#include "definitions.h"
 #include <numeric>
 #include <iostream>
 
@@ -112,9 +113,9 @@ std::string RootFile::toString(Node* node) {
         title = obj->GetTitle();
         classname = obj->ClassName();
         if (name != title) {
-            return std::format("({}) {} \"{}\"", classname, name, title);
+            return fmtstring("({}) {} \"{}\"", classname, name, title);
         }
-        return std::format("({}) {}", classname, name);
+        return fmtstring("({}) {}", classname, name);
     };
     switch (node->type) {
         case NodeType::DIRECTORY: descr = make_name(m_directories[node->index]);  break;

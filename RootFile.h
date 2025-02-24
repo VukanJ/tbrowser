@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include <optional>
 #include "TDirectory.h"
 #include "TTree.h"
 #include "TLeaf.h"

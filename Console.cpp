@@ -2,7 +2,7 @@
 #include "TVirtualTreePlayer.h"
 #include <ncurses.h>
 #include <stdexcept>
-#include <format>
+#include <algorithm>
 #include "definitions.h"
 
 Console::Console() {
@@ -28,7 +28,7 @@ bool Console::parse() {
     std::vector<std::string> tokens {""};
 
     // interpret varexp
-    if (current_input.contains(">>(")) {
+    if (string_contains(current_input, ">>(")) {
         // User is specifying histogram
         // "var1>>(100, 10, 100, 1000, 0, 1)" can be the first token
         auto start_hist_spec = current_input.find(">>(");
@@ -36,7 +36,7 @@ bool Console::parse() {
         tokens.back() = current_input.substr(0, end_hist_spec + 1);
         current_input = current_input.substr(end_hist_spec + 1);
     }
-    if (current_input.contains(":")) {
+    if (string_contains(current_input, ":")) {
         if (std::count(current_input.begin(), current_input.end(), ':') > 1) {
             // Cannot handle 3D hists
             last_error = "Cannot plot 3D histograms :(";
@@ -69,11 +69,11 @@ bool Console::parse() {
         if (ntokens >= 4) { std::get<3>(current_args) = std::stoll(tokens[3]); }
     }
     catch (std::invalid_argument& err) {
-        last_error = std::format("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
+        last_error = fmtstring("Argument 4 (nentries) must be Long64_t, not \"{}\"", tokens[3]);
         valid = false;
     }
     catch (std::out_of_range& err) {
-        last_error = std::format("Argument 4 (nentries) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
+        last_error = fmtstring("Argument 4 (nentries) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
         valid = false;
     }
 
@@ -81,11 +81,11 @@ bool Console::parse() {
         if (ntokens >= 5) { std::get<4>(current_args) = std::stoll(tokens[4]); }
     }
     catch (std::invalid_argument& err) { 
-        last_error = std::format("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
+        last_error = fmtstring("Argument 5 (firstentry) must be Long64_t, not \"{}\"", tokens[4]);
         valid = false;
     }
     catch (std::out_of_range& err) {
-        last_error = std::format("Argument 5 (firstentry) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
+        last_error = fmtstring("Argument 5 (firstentry) out of range [0,{}]", std::numeric_limits<Long64_t>::max());
         valid = false;
     }
 
