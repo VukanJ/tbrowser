@@ -1,11 +1,13 @@
 #include "Browser.h"
 
 #include <cctype>
+#include <clocale>
 #include <iostream>
 #include <cmath>
 #include <csignal>
 #include <algorithm>
 #include <string>
+#include <locale>
 #include <unistd.h>
 #include <unordered_map>
 
@@ -957,15 +959,22 @@ void FileBrowser::helpWindow() {
 
     line = 0;
     attron(A_UNDERLINE);
-    mvwprintw(help, ++line, 53, "Terminal capabilities");
+    mvwprintw(help, ++line, 53, "Terminal capabilities (health check)");
     attroff(A_UNDERLINE);
     line++;
     mvwprintw(help, ++line, 53, "Color support: ........... %s (required)", has_colors() ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Extended color support: .. %s (required)", can_change_color() ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Compiled with unicode: ... %s", USE_UNICODE == 1 ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Terminal colors: ......... %i (needs 256)", tigetnum("colors"));
-    mvwprintw(help, ++line, 53, "Box characters ........... ▖,▗,▄,▌,▐,▙,▟,█ (required)");
+    mvwprintw(help, ++line, 53, "Graphics characters ...... ▖,▗,▄,▌,▐,▙,▟,█ (required)");
     mvwprintw(help, ++line, 53, "Max color pairs........... %i", COLOR_PAIRS);
+    mvwprintw(help, ++line, 53, "LC_ALL ................... %s", setlocale(LC_ALL, nullptr));
+    mvwprintw(help, ++line, 53, "LC_CTYPE ................. %s", setlocale(LC_CTYPE, nullptr));
+    mvwprintw(help, ++line, 53, "LC_MESSAGES .............. %s", setlocale(LC_MESSAGES, nullptr));
+
+    ++line;
+    mvwprintw(help, ++line, 53, "!No question marks should appear below!");
+    ++line;
 
     line++;
     mvwprintw(help, line++, 53, "26 grayscale steps");
