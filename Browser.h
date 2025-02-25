@@ -53,6 +53,7 @@ private:
     void plot2DHistogram(const Console::DrawArgs&);
     void plotAxes(const AxisTicks&, int, int, int, int, bool force_range);
     void plotCanvasAnnotations(TH1* hist, int winy, int winx);
+    void plotCanvasAnnotations(TH2* hist, int winy, int winx);
     void plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx);
     void plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx);
 

@@ -65,6 +65,8 @@ int main (int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    signal(SIGWINCH, [](int) { resize_flag = true; });
+
     MEVENT mouse_event;
 
     while (browser.isRunning()) {

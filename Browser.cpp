@@ -73,7 +73,6 @@ void FileBrowser::initNcurses() {
     cbreak();
     keypad(stdscr, TRUE);
     curs_set(0);
-    signal(SIGWINCH, [](int) { resize_flag = true; });
 
     mouseinterval(0);
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
@@ -89,11 +88,11 @@ void FileBrowser::initNcurses() {
 
     // initialize grayscale
     int grayscale = grayscale_start;
-    init_pair(grayscale++, COLOR_BLACK, COLOR_BLACK);
+    init_pair(grayscale++, 16, COLOR_BLACK); // True black
     for (int c = 232; c <= 255; ++c) {
         init_pair(grayscale++, c, COLOR_BLACK);
     }
-    init_pair(grayscale++, COLOR_WHITE, COLOR_BLACK);
+    init_pair(grayscale++, 15, COLOR_BLACK); // True white
 }
 
 void FileBrowser::loadFile(std::string filename) {
@@ -474,8 +473,8 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
         }
     }
     else if (entriesDrawn != -1) {
-        Double_t* data_x = ttree->GetV1();
-        Double_t* data_y = ttree->GetV2();
+        Double_t* data_y = ttree->GetV1();
+        Double_t* data_x = ttree->GetV2();
         // This is a hack
         Long64_t n = std::min<Long64_t>(ttree->GetSelectedRows(), ttree->GetEntries());
         Double_t minx = *std::min_element(data_x, data_x + n);
@@ -594,18 +593,25 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
 }
 
 void FileBrowser::plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx) {
-    double max_height = hist->GetAt(hist->GetMaximumBin())*1.1;
-    auto size_y = getmaxy(main_window);
+    double max_height = hist->GetAt(hist->GetMaximumBin());
+    auto size_y = getmaxy(main_window) - 2;
 
+    clear();
+    refresh();
     wclear(main_window);
+    wrefresh(main_window);
+
     // Draw ASCII art
     for (int x = 0; x < binsx; x++) {
         for (int y = 0; y < binsy; y++) {
             auto Z = hist->GetBinContent(x, y);
+            if (Z == 0) continue;
             auto pixel_color = std::lerp(grayscale_start, grayscale_end + 1, Z / max_height);
-            attron(COLOR_PAIR(pixel_color));
-            mvprintw(size_y - y + winy, x + winx + 1, "█");
-            attroff(COLOR_PAIR(pixel_color));
+            pixel_color = std::clamp<int>(pixel_color, grayscale_start, grayscale_end - 1);
+            wattron(main_window, COLOR_PAIR(pixel_color));
+            mvwprintw(main_window, binsy - y, x, "█");
+            // mvprintw(size_y - y + winy - 1, x + winx, "█");
+            wattroff(main_window, COLOR_PAIR(pixel_color));
         }
     }
     wrefresh(main_window);
@@ -633,6 +639,39 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
         mvprintw(winy + line++, winx + mainwin_x - 30, "Mean:    %.5f", hist->GetMean());
         mvprintw(winy + line++, winx + mainwin_x - 30, "Std:     %.5f", hist->GetStdDev());
         mvprintw(winy + line++, winx + mainwin_x - 30, "Bins:    %i",   hist->GetNbinsX());
+    }
+
+    if (hist->GetEntries() == 0) {
+        attron(A_BOLD);
+        mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 3, "Empty");
+        attroff(A_BOLD);
+    }
+}
+
+void FileBrowser::plotCanvasAnnotations(TH2* hist, int winy, int winx) {
+    // Plot Title
+    box(main_window, 0, 0);
+    wrefresh(main_window);
+    attron(A_ITALIC);
+    attron(A_BOLD);
+    if (logscale) {
+        mvprintw(1, winx+2, "┤ %s (log-y) ├", hist->GetTitle());
+    }
+    else {
+        mvprintw(1, winx+2, "┤ %s ├", hist->GetTitle());
+    }
+    attroff(A_BOLD);
+    attroff(A_ITALIC);
+
+    // Plot stats
+    int line = 1;
+    if (showstats) {
+        mvprintw(winy + line++, winx + mainwin_x - 30, "Entries: %f",   hist->GetEntries());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "Mean:    %.5f", hist->GetMean());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "Std:     %.5f", hist->GetStdDev());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "x Bins:  %i",   hist->GetNbinsX());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "y Bins:  %i",   hist->GetNbinsY());
+        mvprintw(winy + line++, winx + mainwin_x - 30, "corr:    %f",   hist->GetCorrelationFactor());
     }
 
     if (hist->GetEntries() == 0) {
@@ -748,6 +787,7 @@ void FileBrowser::handleMouseClick(int y, int x) {
 }
 
 void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
+    handleResize();
     if (key == KEY_MOUSE) {
         // Mouse clicks take precedence over console input mode. Always handled
         if (getmouse(&mouse_event) == OK) {
@@ -837,25 +877,25 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         nonsense.clear();
         console.entering_draw_command = true;
     }
+
 }
 
 void FileBrowser::handleResize() {
-    resize_flag = false;
-    int sizex = getmaxx(stdscr);
-    int sizey = getmaxy(stdscr);
-    getmaxyx(stdscr, sizey, sizex);
-    // !!! May be false positive, check
-    if (true || sizex != terminal_size_x || sizey != terminal_size_y) {
-        // mvprintw(getmaxy(dir_window), 0, "RESIZE %i,%i", sizey, sizex);
+    return;
+    if (resize_flag) {
+        resize_flag = false;
+        int sizex = getmaxx(stdscr);
+        int sizey = getmaxy(stdscr);
+        resize_term(sizey, sizex);
+        getmaxyx(stdscr, sizey, sizex);
+        // !!! May be false positive, check
         terminal_size_x = sizex;
         terminal_size_y = sizey;
-        endwin();
+        createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
+        createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
+        createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 3, 20 + 5);
+        clear();
         refresh();
-        createWindow(main_window, terminal_size_y - bottom_height, terminal_size_x - menu_width, 0, menu_width);
-        createWindow(dir_window, terminal_size_y - bottom_height, menu_width, 0, 0);
-    }
-    else {
-        // mvprintw(getmaxy(dir_window), 0, " FAKERESIZE %i,%i", sizey, sizex);
     }
 }
 
@@ -925,6 +965,18 @@ void FileBrowser::helpWindow() {
     mvwprintw(help, ++line, 53, "Compiled with unicode: ... %s", USE_UNICODE == 1 ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Terminal colors: ......... %i (needs 256)", tigetnum("colors"));
     mvwprintw(help, ++line, 53, "Box characters ........... ▖,▗,▄,▌,▐,▙,▟,█ (required)");
+    mvwprintw(help, ++line, 53, "Max color pairs........... %i", COLOR_PAIRS);
+
+    line++;
+    mvwprintw(help, line++, 53, "26 grayscale steps");
+    line++;
+    for (int j = 0, i = grayscale_start; i < grayscale_end; ++i, ++j) {
+        mvwprintw(help, line - 1, 53 + j, "v");
+        wattron(help, COLOR_PAIR(i));
+        mvwprintw(help, line, 53 + j, "█");
+        mvwprintw(help, line + 1, 53 + j, "^");
+        wattroff(help, COLOR_PAIR(i));
+    }
 
     attron(A_ITALIC);
     mvprintw(getbegy(help) + getmaxy(help) - 2, getbegy(help) + 1, "Repository: github.com/VukanJ/tbrowser");
