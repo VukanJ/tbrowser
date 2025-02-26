@@ -1,12 +1,46 @@
 cmake_minimum_required(VERSION 3.12)
-set(PROGRAM browse)
+set(PROGRAM tbrowser)
 project(${PROGRAM})
 
-set(CMAKE_CXX_STANDARD 17) # ROOT needs C++17 still
+set(CMAKE_CXX_STANDARD 17) # ROOT needs C++17 still :(
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find ROOT & ncurses
-find_package(Curses REQUIRED)
+set(NCURSES_MIN_VERSION 6.5)
+set(CURSES_NEED_WIDE TRUE)
+set(BUILD_NCURSES FALSE)
+find_package(Curses QUIET)
+
+# Decide whether to compile ncurses
+if(CURSES_FOUND)
+    # Find ncurses version
+    if(NCURSES_VERSION VERSION_LESS NCURSES_MIN_VERSION)
+        message(WARNING "Installed ncurses ${NCURSES_VERSION} is too old to run ${PROGRAM}. It needs to be built.")
+        set(BUILD_NCURSES TRUE)
+    endif()
+else()
+    set(BUILD_NCURSES TRUE)
+endif()
+
+include(FetchContent)
+if(BUILD_NCURSES)
+    FetchContent_Declare(
+        ncurses
+        URL https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.5.tar.gz
+    )
+    FetchContent_GetProperties(ncurses)
+    if (NOT ncurses_POPULATED)
+        FetchContent_Populate(ncurses)
+
+        # Build ncurses
+        execute_process(COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/ncurses --with-shared WORKING_DIRECTORY ${ncurses_SOURCE_DIR})
+        execute_process(COMMAND make -j COMMAND make install WORKING_DIRECTORY ${ncurses_SOURCE_DIR})
+    endif()
+
+    set(CURSES_INCLUDE_DIR ${CMAKE_BINARY_DIR}/_deps/ncurses-src/include)
+    set(CURSES_LIBRARIES ${CMAKE_BINARY_DIR}/_deps/ncurses-src/lib/libncursesw.so)
+endif()
+
 find_package(ROOT REQUIRED)
 
 # Check if std::format is available
@@ -22,7 +56,6 @@ else()
     add_compile_definitions(NATIVE_FORMAT=0)
     find_package(fmt QUIET)
     if(NOT fmt_FOUND)
-        include(FetchContent)
         FetchContent_Declare(
             fmt
             GIT_REPOSITORY https://github.com/fmtlib/fmt.git
