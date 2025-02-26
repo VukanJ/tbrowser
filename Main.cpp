@@ -56,6 +56,21 @@ int main (int argc, char* argv[]) {
 #endif
     // Initial window setup
     FileBrowser browser;
+
+    move(0 ,0);
+
+    wchar_t wide_char = L'▐';
+
+    // Create a cchar_t object
+    cchar_t cchar;
+
+    // Set the wide character into cchar_t (without attributes)
+    setcchar(&cchar, &wide_char, A_NORMAL, 0, NULL);
+
+    // Add the wide character to the screen
+    add_wch(&cchar);
+    refresh();
+
     try {
         browser.loadFile(filename.c_str());
     }
