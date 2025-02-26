@@ -968,12 +968,10 @@ void FileBrowser::helpWindow() {
     mvwprintw(help, ++line, 53, "Terminal colors: ......... %i (needs 256)", tigetnum("colors"));
     mvwprintw(help, ++line, 53, "Graphics characters ...... ▖,▗,▄,▌,▐,▙,▟,█ (required)");
     mvwprintw(help, ++line, 53, "Max color pairs........... %i", COLOR_PAIRS);
-    mvwprintw(help, ++line, 53, "LC_ALL ................... %s, required: en_US.UTF-8", setlocale(LC_ALL, nullptr));
-    mvwprintw(help, ++line, 53, "LC_CTYPE ................. %s, required: en_US.UTF-8", setlocale(LC_CTYPE, nullptr));
-    mvwprintw(help, ++line, 53, "LC_MESSAGES .............. %s, required: en_US.UTF-8", setlocale(LC_MESSAGES, nullptr));
-    mvwprintw(help, ++line, 53, "NUCRSES .................. %i.%i.%i,", NCURSES_VERSION_MAJOR, NCURSES_VERSION_MINOR, NCURSES_VERSION_PATCH);
-    mvwprintw(help, ++line, 53, "NUCRSES_WCWIDTH .......... %i,", NCURSES_WCWIDTH_GRAPHICS);
-    mvwprintw(help, ++line, 53, "NUCRSES_WIDECHAR ......... %i,", NCURSES_WIDECHAR);
+    mvwprintw(help, ++line, 53, "LC_ALL ................... %s", setlocale(LC_ALL, nullptr));
+    mvwprintw(help, ++line, 53, "LC_CTYPE ................. %s", setlocale(LC_CTYPE, nullptr));
+    mvwprintw(help, ++line, 53, "LC_MESSAGES .............. %s", setlocale(LC_MESSAGES, nullptr));
+    mvwprintw(help, ++line, 53, "NUCRSES .................. %i.%i.%i", NCURSES_VERSION_MAJOR, NCURSES_VERSION_MINOR, NCURSES_VERSION_PATCH);
 
     ++line;
     mvwprintw(help, ++line, 53, "!Solid color gradients should be displayed below!");

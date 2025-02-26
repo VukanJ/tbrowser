@@ -8,22 +8,36 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find ROOT & ncurses
 set(NCURSES_MIN_VERSION 6.5)
 set(CURSES_NEED_WIDE TRUE)
-set(BUILD_NCURSES FALSE)
+set(LOCAL_NCURSES FALSE)
+set(COMPILE_NCURSES FALSE)
 find_package(Curses QUIET)
 
 # Decide whether to compile ncurses
 if(CURSES_FOUND)
     # Find ncurses version
     if(NCURSES_VERSION VERSION_LESS NCURSES_MIN_VERSION)
-        message(WARNING "Installed ncurses ${NCURSES_VERSION} is too old to run ${PROGRAM}. It needs to be built.")
-        set(BUILD_NCURSES TRUE)
+        set(LOCAL_NCURSES TRUE)
+        if(NOT EXISTS "${CMAKE_BINARY_DIR}/ncurses/include/ncursesw/curses.h")
+            message(WARNING "Installed ncurses ${NCURSES_VERSION} is too old to run ${PROGRAM}. It needs to be built.")
+            set(COMPILE_NCURSES TRUE)
+        endif()
     endif()
 else()
-    set(BUILD_NCURSES TRUE)
+    set(LOCAL_NCURSES TRUE)
+endif()
+
+if(LOCAL_NCURSES)
+    unset(CURSES_INCLUDE_DIR CACHE)
+    unset(CURSES_LIBRARIES CACHE)
+    set(CURSES_INCLUDE_DIR ${CMAKE_BINARY_DIR}/ncurses/include)
+    set(CURSES_LIBRARIES ${CMAKE_BINARY_DIR}/ncurses/lib/libncursesw.so)
+    include_directories(BEFORE ${CMAKE_BINARY_DIR}/ncurses/include)
+else()
+    include_directories(${CURSES_LIBRARIES})
 endif()
 
 include(FetchContent)
-if(BUILD_NCURSES)
+if(COMPILE_NCURSES)
     FetchContent_Declare(
         ncurses
         URL https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.5.tar.gz
@@ -36,9 +50,6 @@ if(BUILD_NCURSES)
         execute_process(COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/ncurses --with-shared WORKING_DIRECTORY ${ncurses_SOURCE_DIR})
         execute_process(COMMAND make -j COMMAND make install WORKING_DIRECTORY ${ncurses_SOURCE_DIR})
     endif()
-
-    set(CURSES_INCLUDE_DIR ${CMAKE_BINARY_DIR}/_deps/ncurses-src/include)
-    set(CURSES_LIBRARIES ${CMAKE_BINARY_DIR}/_deps/ncurses-src/lib/libncursesw.so)
 endif()
 
 find_package(ROOT REQUIRED)
@@ -65,7 +76,6 @@ else()
     endif()
 endif()
 
-include_directories(${CURSES_INCLUDE_DIR})
 include(${ROOT_USE_FILE})
 
 # Add executable
@@ -73,9 +83,9 @@ add_executable(${PROGRAM} Main.cpp Browser.cpp AxisTicks.cpp Console.cpp RootFil
 
 # Link against ncurses and ROOT
 if(HAS_STD_FORMAT)
-    target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})
+    target_link_libraries(${PROGRAM} PRIVATE ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})
 else()
-    target_link_libraries(${PROGRAM} ${CURSES_LIBRARIES} ${ROOT_LIBRARIES} fmt::fmt)
+    target_link_libraries(${PROGRAM} PRIVATE ${CURSES_LIBRARIES} ${ROOT_LIBRARIES} fmt::fmt)
 endif()
 
 if(DEFINED USE_UNICODE)
@@ -107,4 +117,4 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_options(${PROGRAM} PRIVATE "-Wall" "-Wextra" "-Wpedantic" "-O3" "-std=c++20")
     endif()
 endif()
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS})
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
