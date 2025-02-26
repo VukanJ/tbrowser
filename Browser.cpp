@@ -972,6 +972,8 @@ void FileBrowser::helpWindow() {
     mvwprintw(help, ++line, 53, "LC_CTYPE ................. %s, required: en_US.UTF-8", setlocale(LC_CTYPE, nullptr));
     mvwprintw(help, ++line, 53, "LC_MESSAGES .............. %s, required: en_US.UTF-8", setlocale(LC_MESSAGES, nullptr));
     mvwprintw(help, ++line, 53, "NUCRSES .................. %i.%i.%i,", NCURSES_VERSION_MAJOR, NCURSES_VERSION_MINOR, NCURSES_VERSION_PATCH);
+    mvwprintw(help, ++line, 53, "NUCRSES_WCWIDTH .......... %i,", NCURSES_WCWIDTH_GRAPHICS);
+    mvwprintw(help, ++line, 53, "NUCRSES_WIDECHAR ......... %i,", NCURSES_WIDECHAR);
 
     ++line;
     mvwprintw(help, ++line, 53, "!Solid color gradients should be displayed below!");
