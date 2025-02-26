@@ -231,6 +231,9 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
+    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
+    refresh();
+
     const char* leafname = leaf->GetName();
 
     // Get bounds
@@ -274,6 +277,9 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     int winy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
+
+    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
+    refresh();
 
     auto& [varexp, selection, option, nentries, firstentry] = args;
 
@@ -413,6 +419,9 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
     int winy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
+
+    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
+    refresh();
 
     auto& [varexp, selection, option, nentries, firstentry] = args;
 
