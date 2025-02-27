@@ -54,13 +54,28 @@ private:
     void plotAxes(const AxisTicks&, int, int, int, int, bool force_range);
     void plotCanvasAnnotations(TH1* hist, int winy, int winx);
     void plotCanvasAnnotations(TH2* hist, int winy, int winx);
-    void plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx);
+    void plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx) const;
     void plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx);
 
     // Window refreshing
     void refreshCMDWindow();
     void helpWindow();
     Console console;
+
+    // 
+    int getBinsx() { 
+        return 2 * mainwin_x - 4; 
+    }
+    int getBinsy() { 
+        if (blockmode_3x2) {
+            return 3 * mainwin_y - 6;
+        }
+        return 2 * mainwin_y - 4;
+    };
+
+    void toggleBlockMode() {
+        blockmode_3x2 = !blockmode_3x2;
+    }
 
     // Ncurses
     WINDOW* dir_window = nullptr;
@@ -82,6 +97,8 @@ private:
     bool showstats = true;
     bool logscale = false;
     bool is_running = true; // false if program should end
+    
+    bool blockmode_3x2 = false;
 
     // Collect user input, transfer to input mode if too much nonsense is entered
     std::string nonsense;
