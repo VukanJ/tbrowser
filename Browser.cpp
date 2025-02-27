@@ -442,8 +442,8 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
     }
 
     // Get bounds
-    auto bins_x = 2 * mainwin_x - 4;
-    auto bins_y = 2 * mainwin_y - 4;
+    auto bins_x = mainwin_x - 2;
+    auto bins_y = mainwin_y - 2;
 
     ttree->SetEstimate(ttree->GetEntries());
     Long64_t entriesDrawn = -1;
