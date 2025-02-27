@@ -73,6 +73,8 @@ private:
     void toggleBlockMode() {
         blockmode++;
         if (blockmode >= 5) blockmode = 2;
+        mvprintw(0, 0, "%ix2 char mode", blockmode);
+        clrtoeol();
     }
 
     // Ncurses

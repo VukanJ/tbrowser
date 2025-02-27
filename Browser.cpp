@@ -442,8 +442,8 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
     }
 
     // Get bounds
-    auto bins_x = getBinsx();
-    auto bins_y = getBinsy();
+    auto bins_x = 2 * mainwin_x - 4;
+    auto bins_y = 2 * mainwin_y - 4;
 
     ttree->SetEstimate(ttree->GetEntries());
     Long64_t entriesDrawn = -1;
@@ -666,7 +666,6 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
 
 void FileBrowser::plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx) {
     double max_height = hist->GetAt(hist->GetMaximumBin());
-    auto size_y = getmaxy(main_window) - 2;
 
     clear();
     refresh();
@@ -682,7 +681,6 @@ void FileBrowser::plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy
             pixel_color = std::clamp<int>(pixel_color, grayscale_start, grayscale_end - 1);
             wattron(main_window, COLOR_PAIR(pixel_color));
             mvwprintw(main_window, binsy - y, x, "█");
-            // mvprintw(size_y - y + winy - 1, x + winx, "█");
             wattroff(main_window, COLOR_PAIR(pixel_color));
         }
     }
@@ -1001,6 +999,7 @@ void FileBrowser::handleMenuSelect() {
         node->toggleOpenOnClick();
     }
     else if (node->type == NodeType::TLEAF) {
+        console.clearCommand();
         plotHistogram(root_file.m_trees.at(node->mother->index), 
                       root_file.m_leaves.at(node->index));
     }
