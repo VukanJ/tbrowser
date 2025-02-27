@@ -575,7 +575,39 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
             cr = log(cr);
         }
 
-        if (blockmode_3x2) {
+        if (blockmode == 4) {
+            attron(A_BOLD);
+            for (int y = 0; y < binsy / 4; ++y) {
+                // Check if ascii character is filled
+                std::uint8_t probe = BLOCKS_code_4x2::BC_VOID;
+                probe |= ((4*y + 0) * pixel_y < cl) << 7;
+                probe |= ((4*y + 0) * pixel_y < cr) << 6;
+                probe |= ((4*y + 1) * pixel_y < cl) << 5;
+                probe |= ((4*y + 1) * pixel_y < cr) << 4;
+                probe |= ((4*y + 2) * pixel_y < cl) << 3;
+                probe |= ((4*y + 2) * pixel_y < cr) << 2;
+                probe |= ((4*y + 3) * pixel_y < cl) << 1;
+                probe |= ((4*y + 3) * pixel_y < cr) << 0;
+                if (probe == BLOCKS_code_4x2::BC_VOID) {
+                    // fill rest with blanks, prevents overdraw...
+                    for (int f = y; f < binsy / 4; ++f) {
+                        mvprintw(winy+mainwin_y-2-f, winx+1+x, " ");
+                    }
+                    break;
+                }
+                try {
+                    auto print = ascii_4x2[ascii_map_4x2.at(static_cast<BLOCKS_code_4x2>(probe))];
+                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%s", print);
+                }
+                catch(...) {
+                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%i", probe);
+                    mvprintw(0, 0, "%i", probe);
+                    clrtoeol();
+                }
+            }
+            attroff(A_BOLD);
+        }
+        else if (blockmode == 3) {
             for (int y = 0; y < binsy / 3; ++y) {
                 // Check if ascii character is filled
                 std::uint8_t probe = BLOCKS_code_3x2::EC_VOID;
@@ -603,7 +635,7 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
                 }
             }
         }
-        else {
+        else if (blockmode == 2) {
             for (int y = 0; y < binsy / 2; ++y) {
                 // Check if ascii character is filled
                 std::uint8_t probe = BLOCKS_code_2x2::C_VOID;
@@ -997,6 +1029,7 @@ void FileBrowser::helpWindow() {
     helpline("Go to top ............ <g>");
     helpline("Go to bottom ......... <G>");
     helpline("Plot selected ........ <ENTER/LMB>");
+    helpline("Cycle graphics mode .. <t>");
     helpline("Quit ................. <q/Ctrl+C>");
 
     line = 0;
@@ -1008,8 +1041,9 @@ void FileBrowser::helpWindow() {
     mvwprintw(help, ++line, 53, "Extended color support: .. %s (required)", can_change_color() ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Compiled with unicode: ... %s", USE_UNICODE == 1 ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Terminal colors: ......... %i (needs 256)", tigetnum("colors"));
-    mvwprintw(help, ++line, 53, "Graphics characters ...... ▖,▗,▄,▌,▐,▙,▟,█ (required)");
-    mvwprintw(help, ++line, 53, "Graphics characters 2 .... 🬏,🬞,🬭,🬱,🬵,🬹,🬓,🬦,▌,▐,🬲,🬷,🬺,🬻,█");
+    mvwprintw(help, ++line, 53, "Graphics characters 2x2 .. ▖,▗,▄,▌,▐,▙,▟,█ (required)");
+    mvwprintw(help, ++line, 53, "Graphics characters 3x2 .. 🬏,🬞,🬭,🬱,🬵,🬹,🬓,🬦,▌,▐,🬲,🬷,🬺,🬻,█");
+    mvwprintw(help, ++line, 53, "Graphics characters 4x2 .. ⡀,⢀,⡄,⢠,⡆,⢰,⡇,⢸,⣀,⣤,⣶,⣿,⣄,⣠,⣆,⣰,⣇,⣸,⣦,⣴,⣧,⣼,⣷,⣾");
     mvwprintw(help, ++line, 53, "Max color pairs........... %i", COLOR_PAIRS);
     mvwprintw(help, ++line, 53, "LC_ALL ................... %s", setlocale(LC_ALL, nullptr));
     mvwprintw(help, ++line, 53, "LC_CTYPE ................. %s", setlocale(LC_CTYPE, nullptr));

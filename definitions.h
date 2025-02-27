@@ -26,6 +26,11 @@ inline bool string_contains(const std::string& str, const std::string& x) {
 
 inline constexpr std::array<const char[4], 8>  ascii_2x2 { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█" };
 inline constexpr std::array<const char[5], 16> ascii_3x2 { "🬏", "🬞", "🬭", "🬱", "🬵", "🬹", "🬓", "🬦", "▌", "▐", "🬲", "🬷", "🬺", "🬻", "█"};
+inline constexpr std::array<const char[5], 24> ascii_4x2 { 
+    "⡀", "⢀", "⡄", "⢠", "⡆", "⢰", "⡇", "⢸", 
+    "⣀", "⣤", "⣶", "⣿",
+    "⣄", "⣠", "⣆", "⣰", "⣇", "⣸", "⣦", "⣴", "⣧", "⣼", "⣷", "⣾"
+};
 
 enum BLOCKS_2x2 : std::uint8_t {
     a_LOWER_LEFT,
@@ -88,6 +93,62 @@ enum BLOCKS_code_3x2 : std::uint8_t {
     EC_VOID         = 0b000000,
 };
 
+enum BLOCKS_4x2 : std::uint8_t {
+    B_L1,  // "⡀", 
+    B_R1,  // "⢀", 
+    B_L2,  // "⡄", 
+    B_R2,  // "⢠", 
+    B_L3,  // "⡆", 
+    B_R3,  // "⢰", 
+    B_L4,  // "⡇", 
+    B_R4,  // "⢸", 
+    B_1,   // "⣀", 
+    B_2,   // "⣤", 
+    B_3,   // "⣶", 
+    B_4,   // "⣿", 
+    B_LS1, // "⣄", 
+    B_RS1, // "⣠", 
+    B_LS2, // "⣆", 
+    B_RS2, // "⣰", 
+    B_LS3, // "⣇", 
+    B_RS3, // "⣸", 
+    B_LS4, // "⣦", 
+    B_RS4, // "⣴", 
+    B_LS5, // "⣧", 
+    B_RS5, // "⣼", 
+    B_LS6, // "⣷", 
+    B_RS6, // "⣾"
+    B_VOID
+};
+
+enum BLOCKS_code_4x2 : std::uint8_t {
+    BC_L1  = 0b10000000, // "⡀", 
+    BC_R1  = 0b01000000, // "⢀", 
+    BC_L2  = 0b10100000, // "⡄", 
+    BC_R2  = 0b01010000, // "⢠", 
+    BC_L3  = 0b10101000, // "⡆", 
+    BC_R3  = 0b01010100, // "⢰", 
+    BC_L4  = 0b10101010, // "⡇", 
+    BC_R4  = 0b01010101, // "⢸", 
+    BC_1   = 0b11000000, // "⣀", 
+    BC_2   = 0b11110000, // "⣤", 
+    BC_3   = 0b11111100, // "⣶", 
+    BC_4   = 0b11111111, // "⣿", 
+    BC_LS1 = 0b11100000, // "⣄", 
+    BC_RS1 = 0b11010000, // "⣠", 
+    BC_LS2 = 0b11101000, // "⣆", 
+    BC_RS2 = 0b11010100, // "⣰", 
+    BC_LS3 = 0b11101010, // "⣇", 
+    BC_RS3 = 0b11010101, // "⣸", 
+    BC_LS4 = 0b11111000, // "⣦", 
+    BC_RS4 = 0b11110100, // "⣴", 
+    BC_LS5 = 0b11111010, // "⣧", 
+    BC_RS5 = 0b11110101, // "⣼", 
+    BC_LS6 = 0b11111110, // "⣷", 
+    BC_RS6 = 0b11111101, // "⣾"
+    BC_VOID = 0
+};
+
 inline std::unordered_map<BLOCKS_code_2x2, BLOCKS_2x2> ascii_map_2x2 = {
     {C_VOID,         a_VOID},
     {C_LOWER_LEFT,   a_LOWER_LEFT},
@@ -117,6 +178,34 @@ inline std::unordered_map<std::uint8_t, std::uint8_t> ascii_map_3x2 = {
     {EC_BSTAIR_L,     A_BSTAIR_L},
     {EC_BSTAIR_R,     A_BSTAIR_R},
     {EC_FULL_BLOCK,   A_FULL_BLOCK},
+};
+
+inline std::unordered_map<std::uint8_t, std::uint8_t> ascii_map_4x2 = {
+    {BC_L1,   B_L1},
+    {BC_R1,   B_R1},
+    {BC_L2,   B_L2},
+    {BC_R2,   B_R2},
+    {BC_L3,   B_L3},
+    {BC_R3,   B_R3},
+    {BC_L4,   B_L4},
+    {BC_R4,   B_R4},
+    {BC_1,    B_1,},
+    {BC_2,    B_2,},
+    {BC_3,    B_3,},
+    {BC_4,    B_4,},
+    {BC_LS1,  B_LS1},
+    {BC_RS1,  B_RS1},
+    {BC_LS2,  B_LS2},
+    {BC_RS2,  B_RS2},
+    {BC_LS3,  B_LS3},
+    {BC_RS3,  B_RS3},
+    {BC_LS4,  B_LS4},
+    {BC_RS4,  B_RS4},
+    {BC_LS5,  B_LS5},
+    {BC_RS5,  B_RS5},
+    {BC_LS6,  B_LS6},
+    {BC_RS6,  B_RS6},
+    {BC_VOID, B_VOID}
 };
 
 enum color {

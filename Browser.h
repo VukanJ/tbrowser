@@ -67,14 +67,12 @@ private:
         return 2 * mainwin_x - 4; 
     }
     int getBinsy() { 
-        if (blockmode_3x2) {
-            return 3 * mainwin_y - 6;
-        }
-        return 2 * mainwin_y - 4;
+        return blockmode * mainwin_y - 2 * blockmode;
     };
 
     void toggleBlockMode() {
-        blockmode_3x2 = !blockmode_3x2;
+        blockmode++;
+        if (blockmode >= 5) blockmode = 2;
     }
 
     // Ncurses
@@ -98,7 +96,7 @@ private:
     bool logscale = false;
     bool is_running = true; // false if program should end
     
-    bool blockmode_3x2 = false;
+    int blockmode = 2;
 
     // Collect user input, transfer to input mode if too much nonsense is entered
     std::string nonsense;
