@@ -25,6 +25,7 @@
 #include "AxisTicks.h"
 #include "RootFile.h"
 #include "definitions.h"
+#include "nlohmann/json.hpp"
 
 auto make_superscript(int n) {
 #if USE_UNICODE
@@ -110,6 +111,10 @@ void FileBrowser::loadSettings() {
         if (settings.is_open()) {
             settings << R"({"blockmode":"2x2","statsbox":true})";
         }
+        else {
+            std::cerr << "Could not create user settings file" << std::endl;
+            return;
+        }
         settings.close();
     }
 
@@ -139,7 +144,6 @@ void FileBrowser::saveSettings() {
         settings_json["statsbox"] = showstats;
         saveSettings << settings_json;
         saveSettings.close();
-
     }
 }
 
@@ -245,7 +249,6 @@ void FileBrowser::toggleLogy() {
 } 
 
 void FileBrowser::plotHistogram() {
-    // Get currently active TTree
     if (console.hasCommand()) {
         if (std::get<0>(console.current_args).hist2d) {
             plot2DHistogram(console.current_args);
@@ -303,19 +306,8 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     refresh();
 }
 
-void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
-    // Get window position and size
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
-    getmaxyx(main_window, mainwin_y, mainwin_x);
-    box(main_window, 0, 0);
-
-    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
-    refresh();
-
-    auto& [varexp, selection, option, nentries, firstentry] = args;
-
-    // Get selected tree
+TTree* FileBrowser::getActiveTTree() {
+    // Get selected tree or the tree of the currently selected branch
     TTree* ttree = nullptr;
     std::size_t entry = selected_pos + menu_scroll_pos;
     if (entry < root_file.displayList.size()) {
@@ -329,11 +321,33 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     }
 
     if (ttree == nullptr) {
-        console.setError("No TTree opened");
-        return; // Give up for now
+        // No tree selected, return obvious single choice
+        if (root_file.m_trees.size() == 1) {
+            return root_file.m_trees[0];
+        }
     }
 
-    int debug = 4;
+    console.setError("No TTree found in file!");
+    return ttree;
+}
+
+void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
+    // Get window position and size
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
+    getmaxyx(main_window, mainwin_y, mainwin_x);
+    box(main_window, 0, 0);
+
+    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
+    refresh();
+
+    auto& [varexp, selection, option, nentries, firstentry] = args;
+
+    // Get selected tree
+    TTree* ttree = getActiveTTree();
+    if (ttree == nullptr) {
+        return;
+    }
 
     // Get bounds
     auto bins_x = getBinsx();
@@ -441,22 +455,9 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
 
     auto& [varexp, selection, option, nentries, firstentry] = args;
 
-    // Get selected tree
-    TTree* ttree = nullptr;
-    std::size_t entry = selected_pos + menu_scroll_pos;
-    if (entry < root_file.displayList.size()) {
-        auto [name, node] = root_file.displayList.at(entry);
-        if (node->type == NodeType::TLEAF) {
-            ttree = root_file.m_trees[node->mother->index];
-        }
-        else if (node->type == NodeType::TTREE) {
-            ttree = root_file.m_trees[node->index];
-        }
-    }
-
+    TTree* ttree = getActiveTTree();
     if (ttree == nullptr) {
-        console.setError("No TTree opened");
-        return; // Give up for now
+        return;
     }
 
     // Get bounds
