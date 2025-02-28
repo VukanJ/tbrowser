@@ -245,20 +245,10 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
         max = min + 1;
     }
 
-    mvprintw(8, 30, "max %f", max);
-    mvprintw(9, 30, "min %f", min);
     const AxisTicks xaxis(min, max);
     min = xaxis.min_adjusted();
     max = xaxis.max_adjusted();
     TH1D hist("H", leafname, bins_x, min, max);
-
-    mvprintw(10, 30, "HIST");
-    mvprintw(11, 30, "name %s", hist.GetName());
-    mvprintw(12, 30, "title %s", hist.GetTitle());
-    mvprintw(13, 30, "max' %f", max);
-    mvprintw(14, 30, "min' %f", min);
-    mvprintw(15, 30, "binsx %i", hist.GetNbinsX());
-    mvprintw(16, 30, "Entries %lld", tree->GetEntries());
 
     tree->Project("H", leafname);
     
@@ -300,11 +290,6 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     }
 
     int debug = 4;
-    mvprintw(debug++, 30, "A1 %s", varexp.expression.c_str());
-    mvprintw(debug++, 30, "A2 %s", selection.c_str());
-    mvprintw(debug++, 30, "A3 %s", option);
-    mvprintw(debug++, 30, "A4 %lld", nentries);
-    mvprintw(debug++, 30, "A5 %lld", firstentry);
 
     // Get bounds
     auto bins_x = getBinsx();
@@ -379,17 +364,6 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             hist.Draw("goff");
         }
 
-
-        mvprintw(10, 30, "HIST");
-        mvprintw(11, 30, "name %s", hist.GetName());
-        mvprintw(12, 30, "title %s", hist.GetTitle());
-        mvprintw(13, 30, "max %f", max);
-        mvprintw(14, 30, "min %f", min);
-        mvprintw(15, 30, "binsx %i", hist.GetNbinsX());
-        mvprintw(16, 30, "processed %lld", ttree->GetSelectedRows());
-        mvprintw(17, 30, "n %lld", n);
-        mvprintw(18, 30, "Entries %lld", ttree->GetEntries());
-        mvprintw(19, 30, "first %f", data[0]);
         if (min == max) {
             // Handle single value histograms
             min = min - 1;
@@ -519,16 +493,6 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
             hist2d.Draw("goff");
         }
 
-        /* mvprintw(10, 30, "HIST"); */
-        /* mvprintw(11, 30, "name %s", hist.GetName()); */
-        /* mvprintw(12, 30, "title %s", hist.GetTitle()); */
-        /* mvprintw(13, 30, "max %f", max); */
-        /* mvprintw(14, 30, "min %f", min); */
-        /* mvprintw(15, 30, "binsx %i", hist.GetNbinsX()); */
-        /* mvprintw(16, 30, "processed %lld", ttree->GetSelectedRows()); */
-        /* mvprintw(17, 30, "n %lld", n); */
-        /* mvprintw(18, 30, "Entries %lld", ttree->GetEntries()); */
-        /* mvprintw(19, 30, "first %f", data[0]); */
         if (minx == maxx) {
             // Handle single value histograms
             minx = minx - 1;
