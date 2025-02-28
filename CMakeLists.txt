@@ -79,7 +79,8 @@ endif()
 include(${ROOT_USE_FILE})
 
 # Add executable
-add_executable(${PROGRAM} Main.cpp Browser.cpp AxisTicks.cpp Console.cpp RootFile.cpp)
+add_executable(${PROGRAM} src/Main.cpp src/Browser.cpp src/AxisTicks.cpp src/Console.cpp src/RootFile.cpp)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Link against ncurses and ROOT
 if(HAS_STD_FORMAT)

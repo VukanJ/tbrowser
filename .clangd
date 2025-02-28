@@ -10,3 +10,4 @@ CompileFlags:
     - -Wuse-after-free 
     - -Wshadow 
     - -I/home/vukan/root/include
+    - -I/home/vukan/tbrowser/include
