@@ -2,8 +2,10 @@
 
 #include <cctype>
 #include <clocale>
+#include <filesystem>
 #include <iostream>
 #include <cmath>
+#include <fstream>
 #include <csignal>
 #include <algorithm>
 #include <string>
@@ -41,6 +43,7 @@ volatile bool resize_flag = false;
 
 FileBrowser::FileBrowser() {
     initNcurses();
+    loadSettings();
     int sizex = getmaxx(stdscr);
     int sizey = getmaxy(stdscr);
     createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
@@ -59,6 +62,7 @@ FileBrowser::FileBrowser() {
 }
 
 FileBrowser::~FileBrowser() {
+    saveSettings();
     delwin(cmd_window);
     delwin(main_window);
     delwin(dir_window);
@@ -95,8 +99,52 @@ void FileBrowser::initNcurses() {
     init_pair(grayscale++, 15, COLOR_BLACK); // True white
 }
 
+void FileBrowser::loadSettings() {
+    namespace fs = std::filesystem;
+
+    dotpath = fs::path(std::getenv("HOME")) / ".tbrowser";
+    // Make sure dotfile exists
+    if (!fs::exists(dotpath / "settings.json")) {
+        fs::create_directory(dotpath);
+        std::ofstream settings(dotpath / "settings.json", std::ios::out);
+        if (settings.is_open()) {
+            settings << R"({"blockmode":"2x2","statsbox":true})";
+        }
+        settings.close();
+    }
+
+    // Load settings
+    std::ifstream settings(dotpath / "settings.json", std::ios::in);
+    if (settings.is_open()) {
+        settings >> settings_json;
+        if (settings_json.contains("blockmode")) {
+            if (settings_json["blockmode"] == "2x2") {      blockmode = 2; }
+            else if (settings_json["blockmode"] == "3x2") { blockmode = 3; }
+            else if (settings_json["blockmode"] == "4x2") { blockmode = 4; }
+        }
+        if (settings_json.contains("statsbox")) {
+            showstats = settings_json["statsbox"];
+        }
+    }
+}
+
+void FileBrowser::saveSettings() {
+    std::ofstream saveSettings(dotpath / "settings.json", std::ios::out);
+    if (saveSettings.is_open()) {
+        switch (blockmode) {
+            case 2: settings_json["blockmode"] = "2x2"; break;
+            case 3: settings_json["blockmode"] = "3x2"; break;
+            case 4: settings_json["blockmode"] = "4x2"; break;
+        }
+        settings_json["statsbox"] = showstats;
+        saveSettings << settings_json;
+        saveSettings.close();
+
+    }
+}
+
 void FileBrowser::loadFile(std::string filename) {
-    mvprintw(1, 1, "Reading...");
+    mvprintw(2, 1, "Reading...");
     refresh();
 
     root_file.load(filename);
@@ -186,10 +234,6 @@ void FileBrowser::goTop() {
 void FileBrowser::goBottom() {
     selected_pos = getmaxy(dir_window) - 3;
     menu_scroll_pos = root_file.menuLength() - getmaxy(dir_window) + 2;
-}
-
-void FileBrowser::toggleKeyBindings() {
-    showkeys = !showkeys; 
 }
 
 void FileBrowser::toggleStatsBox() {

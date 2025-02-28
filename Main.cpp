@@ -14,18 +14,20 @@
 // - [x] Open obvious tree
 // - [ ] Fix menu scroll
 // - [ ] Make console active tree dependent
-// - [ ] histogram spec in drawcall
+// - [x] histogram spec in drawcall
 // - [ ] y axis
 // - [ ] TH1 plotting
 // - [ ] TH2 plotting
 // - [ ] Tab completion
 // - [ ] Histogram buffer (quick redraw)
-// - [ ] Make log toggle command dependent
+// - [x] Make log toggle command dependent
 // - [x] Help window <?>
 // - [x] Console delete fix
 // - [ ] Console history
 // - [ ] Console horizontal scroll 
 // - [ ] Search
+// - [ ] Obvious tree should be used for plotting
+// - [ ] Settings persistence
 
 #undef DEBUG
 
