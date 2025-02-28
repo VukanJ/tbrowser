@@ -50,6 +50,7 @@ private:
     // plot option toggles
     void toggleStatsBox();
     void toggleLogy();
+    TTree* getActiveTTree();
 
     // plot commands
     void plotHistogram(TTree*, TLeaf*);

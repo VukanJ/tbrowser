@@ -26,8 +26,8 @@
 // - [ ] Console history
 // - [ ] Console horizontal scroll 
 // - [ ] Search
-// - [ ] Obvious tree should be used for plotting
-// - [ ] Settings persistence
+// - [x] Obvious tree should be used for plotting
+// - [x] Settings persistence
 
 #undef DEBUG
 
