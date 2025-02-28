@@ -11,7 +11,9 @@
 #include "AxisTicks.h"
 #include "Console.h"
 #include "RootFile.h"
+#include <nlohmann/json.hpp>
 
+using JSON = nlohmann::json;
 class FileBrowser final {
 public:
     FileBrowser();
@@ -29,6 +31,9 @@ private:
     static void initNcurses();
     static void createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, int pos_x);
 
+    void loadSettings();
+    void saveSettings();
+
     void drawEssentials();
 
     void handleMenuSelect();
@@ -43,7 +48,6 @@ private:
     void goBottom();
 
     // plot option toggles
-    void toggleKeyBindings();
     void toggleStatsBox();
     void toggleLogy();
 
@@ -77,10 +81,13 @@ private:
         clrtoeol();
     }
 
+    JSON settings_json;
+
     // Ncurses
     WINDOW* dir_window = nullptr;
     WINDOW* main_window = nullptr;
     WINDOW* cmd_window = nullptr;
+    std::filesystem::path dotpath;
 
     int mainwin_x;
     int mainwin_y;
@@ -93,7 +100,6 @@ private:
     int menu_scroll_pos = 0;
 
     // Toggles
-    bool showkeys = false;
     bool showstats = true;
     bool logscale = false;
     bool is_running = true; // false if program should end

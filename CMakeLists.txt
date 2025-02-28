@@ -53,6 +53,13 @@ if(COMPILE_NCURSES)
 endif()
 
 find_package(ROOT REQUIRED)
+message("Getting nlohmann-json")
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG        ${NLOHMANN_JSON_VERSION}
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
 # Check if std::format is available
 include(CheckCXXSourceCompiles)
@@ -84,9 +91,9 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Link against ncurses and ROOT
 if(HAS_STD_FORMAT)
-    target_link_libraries(${PROGRAM} PRIVATE ${CURSES_LIBRARIES} ${ROOT_LIBRARIES})
+    target_link_libraries(${PROGRAM} PRIVATE ${CURSES_LIBRARIES} ${ROOT_LIBRARIES} nlohmann_json::nlohmann_json)
 else()
-    target_link_libraries(${PROGRAM} PRIVATE ${CURSES_LIBRARIES} ${ROOT_LIBRARIES} fmt::fmt)
+    target_link_libraries(${PROGRAM} PRIVATE ${CURSES_LIBRARIES} ${ROOT_LIBRARIES} fmt::fmt nlohmann_json::nlohmann_json)
 endif()
 
 if(DEFINED USE_UNICODE)
