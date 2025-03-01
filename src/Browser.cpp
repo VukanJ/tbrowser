@@ -174,7 +174,9 @@ void FileBrowser::printDirectories() {
     int maxlines = getmaxy(dir_window) - 2;
 
     if (searchMode.isActive) {
+        attron(A_BOLD | A_ITALIC);
         mvprintw(0, 0, "/%s", searchMode.input.c_str());
+        attroff(A_ITALIC | A_BOLD);
         clrtoeol();
     }
 
@@ -197,20 +199,16 @@ void FileBrowser::printDirectories() {
             case NodeType::HIST:    entry_label = fmtstring("{} {}", SYMB_THIST, name); col = col_blue; attr = A_ITALIC; break;
             case NodeType::UNKNOWN: entry_label = fmtstring("{} {}", SYMB_TUNKNOWN, name); col = col_red; break;
         }
-        attron(COLOR_PAIR(col));
-        attron(attr);
+        attron(attr | COLOR_PAIR(col));
         if (entry == selected_pos) {
-            attron(A_REVERSE);
-            attron(A_ITALIC);
+            attron(A_REVERSE | A_ITALIC);
         }
         auto entryfmt = fmtstring("%.{}s", menu_width);
         mvprintw(y + entry, x, entryfmt.c_str(), entry_label.c_str());
         if (entry == selected_pos) {
-            attroff(A_REVERSE);
-            attroff(A_ITALIC);
+            attroff(A_REVERSE | A_ITALIC);
         }
-        attroff(attr);
-        attroff(COLOR_PAIR(col));
+        attroff(attr | COLOR_PAIR(col));
         entry++;
     };
 
@@ -236,12 +234,10 @@ void FileBrowser::printDirectories() {
 
     box(dir_window, 0, 0);
     if (searchMode.isActive) {
-        attron(A_BOLD);
-        attron(A_REVERSE);
+        attron(A_BOLD | A_REVERSE);
         mvprintw(y-1, x, "[SEARCH MODE]");
         mvprintw(y + maxlines, x, "[EXIT WITH '/']");
-        attroff(A_REVERSE);
-        attroff(A_BOLD);
+        attroff(A_BOLD | A_REVERSE);
     }
 
     wrefresh(dir_window);
@@ -760,16 +756,14 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist) {
     int winy = getbegy(main_window);
     box(main_window, 0, 0);
     wrefresh(main_window);
-    attron(A_ITALIC);
-    attron(A_BOLD);
+    attron(A_ITALIC | A_BOLD);
     if (logscale) {
         mvprintw(1, winx+4, "┤ %s (log-y) ├", hist->GetTitle());
     }
     else {
         mvprintw(1, winx+4, "┤ %s ├", hist->GetTitle());
     }
-    attroff(A_BOLD);
-    attroff(A_ITALIC);
+    attroff(A_ITALIC | A_BOLD);
 
     // Plot stats
     int line = 1;
@@ -793,16 +787,14 @@ void FileBrowser::plotCanvasAnnotations(TH2* hist) {
     int winy = getbegy(main_window);
     box(main_window, 0, 0);
     wrefresh(main_window);
-    attron(A_ITALIC);
-    attron(A_BOLD);
+    attron(A_ITALIC | A_BOLD);
     if (logscale) {
         mvprintw(1, winx+2, "┤ %s (log-y) ├", hist->GetTitle());
     }
     else {
         mvprintw(1, winx+2, "┤ %s ├", hist->GetTitle());
     }
-    attroff(A_BOLD);
-    attroff(A_ITALIC);
+    attroff(A_ITALIC | A_BOLD);
 
     // Plot stats
     int line = 1;
@@ -855,8 +847,7 @@ void FileBrowser::plotXAxis(const AxisTicks& ticks, bool force_range) {
         if (charpos < 0) continue;
         xaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
 
-        attron(A_ITALIC);
-        attron(A_BOLD);
+        attron(A_ITALIC | A_BOLD);
         if (ticks.integer) {
             // write centered numbers below
             long tick = ticks.values_i[i];
@@ -869,8 +860,7 @@ void FileBrowser::plotXAxis(const AxisTicks& ticks, bool force_range) {
             int ticklen = num.size();
             mvprintw(winy + sizey, winx + 1 + charpos - ticklen / 2, "%s", num.c_str());
         }
-        attroff(A_BOLD);
-        attroff(A_ITALIC);
+        attroff(A_BOLD | A_ITALIC);
     }
     if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
     
@@ -935,8 +925,7 @@ void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
         if (charpos < 0) continue;
         yaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
 
-        attron(A_ITALIC);
-        attron(A_BOLD);
+        attron(A_ITALIC | A_BOLD);
         if (ticks.integer) {
             // write centered numbers below
             long tick = ticks.values_i[i];
@@ -949,8 +938,7 @@ void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
             int ticklen = num.size();
             mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", num.c_str());
         }
-        attroff(A_BOLD);
-        attroff(A_ITALIC);
+        attroff(A_ITALIC | A_BOLD);
     }
     if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
     
@@ -1203,7 +1191,7 @@ void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, 
 }
 
 void FileBrowser::drawEssentials() {
-    std::string help = "Show help <?>";
+    std::string help = "Preferences <P> Show help <?>";
     mvprintw(0, getmaxx(stdscr) - help.size(), "%s", help.c_str());
 }
 
@@ -1300,13 +1288,9 @@ void FileBrowser::ColorPickerWindow::render() {
     box(color_window, 0, 0);
     if (color_window == nullptr) throw;
 
-    wattron(color_window, COLOR_PAIR(selected));
-    wattron(color_window, A_BLINK);
-    wattron(color_window, A_REVERSE);
+    wattron(color_window, COLOR_PAIR(selected) | A_BLINK | A_REVERSE);
     mvwprintw(color_window, 0, 2, "Pick a color");
-    wattroff(color_window, A_REVERSE);
-    wattroff(color_window, A_BLINK);
-    wattroff(color_window, COLOR_PAIR(selected));
+    wattroff(color_window, COLOR_PAIR(selected) | A_BLINK | A_REVERSE);
 
     wmove(color_window, 1, 1);
     int line = 1;

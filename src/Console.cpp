@@ -296,11 +296,9 @@ void Console::redraw(int posy, int posx) {
     else {
         // Command state
         if (entering_draw_command) {
-            attron(COLOR_PAIR(col_yellow));
-            attron(A_REVERSE);
+            attron(COLOR_PAIR(col_yellow) | A_REVERSE);
             mvprintw(posy-2, posx, " INPUT ");
-            attroff(A_REVERSE);
-            attroff(COLOR_PAIR(col_yellow));
+            attroff(COLOR_PAIR(col_yellow) | A_REVERSE);
         }
         else {
             mvprintw(posy-2, posx, "       ");
