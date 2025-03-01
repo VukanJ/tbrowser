@@ -55,14 +55,13 @@ FileBrowser::FileBrowser() {
 
     refreshCMDWindow();
 
-    getmaxyx(stdscr, terminal_size_y, terminal_size_x);
     drawEssentials();
 }
 
 void FileBrowser::initAllWindows() {
     int sizex = getmaxx(stdscr);
     int sizey = getmaxy(stdscr);
-    createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
+    createWindow(main_window, sizey - bottom_height, sizex - menu_width - yaxis_spacing, 1, menu_width + yaxis_spacing);
     createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
     createWindow(cmd_window, 3, sizex - 25, sizey - bottom_height + 3, 20 + 5);
 }
@@ -357,16 +356,17 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
         max = min + 1;
     }
 
-    const AxisTicks xaxis(min, max);
-    min = xaxis.min_adjusted();
-    max = xaxis.max_adjusted();
     TH1D hist("H", leafname, bins_x, min, max);
 
     tree->Project("H", leafname);
-    
-    plotASCIIHistogram(winy, winx, &hist, bins_y, bins_x);
+
+    const AxisTicks xaxis(min, max);
+    const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5);
+
+    plotYAxis(yaxis, false);
+    plotXAxis(xaxis, false);
+    plotASCIIHistogram(&hist, bins_y, bins_x);
     plotCanvasAnnotations(&hist, winy, winx);
-    plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, false);
 
     refresh();
 }
@@ -468,12 +468,12 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             max = min + 1;
         }
         const AxisTicks xaxis(min, max);
-        min = xaxis.min();
-        max = xaxis.max();
+        const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5);
 
-        plotASCIIHistogram(winy, winx, &hist, bins_y, bins_x);
+        plotYAxis(yaxis, false);
+        plotXAxis(xaxis, true);
+        plotASCIIHistogram(&hist, bins_y, bins_x);
         plotCanvasAnnotations(&hist, winy, winx);
-        plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, true);
     }
     else {
         console.setError("Branch not found");
@@ -590,14 +590,11 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
         }
         const AxisTicks xaxis(minx, maxx);
         const AxisTicks yaxis(miny, maxy);
-        minx = xaxis.min();
-        maxx = xaxis.max();
-        miny = yaxis.min();
-        maxy = yaxis.max();
 
-        plotASCIIHistogram2D(winy, winx, &hist2d, bins_y, bins_x);
+        plotYAxis(yaxis, true);
+        plotXAxis(xaxis, true);
+        plotASCIIHistogram2D(&hist2d, bins_y, bins_x);
         plotCanvasAnnotations(&hist2d, winy, winx);
-        plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, true);
     }
     else {
         console.setError("Branch not found");
@@ -606,8 +603,10 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
     refresh();
 }
 
-void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx) const {
-    double max_height = hist->GetAt(hist->GetMaximumBin())*1.1;
+void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
+    double max_height = hist->GetAt(hist->GetMaximumBin())*top_hist_clear;
     double pixel_y = max_height / binsy;
 
     if (logscale) {
@@ -713,7 +712,7 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
     attroff(COLOR_PAIR(1));
 }
 
-void FileBrowser::plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx) {
+void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
     double max_height = hist->GetAt(hist->GetMaximumBin());
 
     clear();
@@ -743,10 +742,10 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
     attron(A_ITALIC);
     attron(A_BOLD);
     if (logscale) {
-        mvprintw(1, winx+2, "┤ %s (log-y) ├", hist->GetTitle());
+        mvprintw(1, winx+4, "┤ %s (log-y) ├", hist->GetTitle());
     }
     else {
-        mvprintw(1, winx+2, "┤ %s ├", hist->GetTitle());
+        mvprintw(1, winx+4, "┤ %s ├", hist->GetTitle());
     }
     attroff(A_BOLD);
     attroff(A_ITALIC);
@@ -800,8 +799,11 @@ void FileBrowser::plotCanvasAnnotations(TH2* hist, int winy, int winx) {
     }
 }
 
-void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey, int sizex, bool force_range) 
-{
+void FileBrowser::plotXAxis(const AxisTicks& ticks, bool force_range) {
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
+    int sizex = getmaxx(main_window);
+    int sizey = getmaxy(main_window);
     // Clear line below plot
     move(winy + sizey, 0);
     clrtoeol();
@@ -813,8 +815,8 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey
         xmax = ticks.max();
     }
     else {
-        xmin = ticks.min_adjusted();
-        xmax = ticks.max_adjusted();
+        xmin = ticks.minAdjusted();
+        xmax = ticks.maxAdjusted();
     }
 
     auto nBinsX = ticks.nticks;
@@ -864,6 +866,85 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey
         std::string magnitude = fmtstring("x10^{}", make_superscript(ticks.E));
 #endif
         mvprintw(winy+sizey-1, winx+sizex-magnitude.size()-2, " %s ", magnitude.c_str());
+        attroff(COLOR_PAIR(col_yellow));
+    }
+}
+
+void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
+    int winx = getbegx(main_window);
+    int winy = getbegx(main_window);
+    int sizex = getbegx(main_window);
+    int sizey = getbegx(main_window);
+    // Clear line below plot
+    double ymin = 0;
+    double ymax = 1;
+    if (force_range) {
+        ymin = ticks.min();
+        ymax = ticks.max();
+    }
+    else {
+        ymin = ticks.minAdjusted();
+        ymax = ticks.maxAdjusted();
+    }
+
+    // makeSpaceForYaxis
+    int reserve_xwidth = ticks.maxLabelWidth() + 1;
+    makeSpaceForYaxis(reserve_xwidth);
+    for (int i =0; i < reserve_xwidth;++i) {
+        move(winy, winx + i);
+        clrtobot();
+    }
+    winx = getbegx(main_window);
+    winy = getbegy(main_window);
+    sizex = getmaxx(main_window);
+    sizey = getmaxy(main_window);
+
+    auto nBinsY = ticks.nticks;
+    double rangeY = ymax - ymin;
+
+    // Write numbers below axis at tick positions
+    auto nchars = sizey - 1;
+    std::vector<char> yaxis_chars(nchars, '|');
+    if (ticks.E != 0) { attron(COLOR_PAIR(col_yellow)); }
+    for (int i = 0; i < nBinsY; ++i) {
+        double tickPos = ticks.tickPosition(i);
+        int charpos = (tickPos - ymin) / rangeY * nchars;
+        if (charpos < 0) continue;
+        yaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
+
+        attron(A_ITALIC);
+        attron(A_BOLD);
+        if (ticks.integer) {
+            // write centered numbers below
+            long tick = ticks.values_i[i];
+            int ticklen = ticks.values_str[i].size();
+            mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%ld", tick);
+        }
+        else {
+            // write centered numbers below
+            auto num = ticks.values_str[i];
+            int ticklen = num.size();
+            mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", num.c_str());
+        }
+        attroff(A_BOLD);
+        attroff(A_ITALIC);
+    }
+    if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
+    
+    // Draw the tick lines
+    for (int i = 0; char c : yaxis_chars) {
+        mvprintw(winy + sizey - 1 - i++, winx, c == '+' ? "┼" : "│"); 
+    }
+
+    // Print exponent if needed
+    if (ticks.E != 0) {
+        attron(COLOR_PAIR(col_yellow));
+#if USE_UNICODE
+        std::string magnitude = fmtstring("x10{}", make_superscript(ticks.E));
+#else
+        std::string magnitude = fmtstring("x10^{}", make_superscript(ticks.E));
+#endif
+        mvprintw(winy - 1, winx - 1, " %s ", magnitude.c_str());
         attroff(COLOR_PAIR(col_yellow));
     }
 }
@@ -923,6 +1004,8 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
                 selectionDown();
             }
         }
+        refreshCMDWindow();
+        drawEssentials();
         return;
     }
     if (colorWindow.show) {
@@ -959,9 +1042,6 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         case KEY_F(2):
             menu_width = std::max<int>(menu_width - 3, 10);
             handleResize(true);
-            break;
-        case KEY_F(3):
-            makeSpaceForYaxis();
             break;
         case 'q':
             is_running = false;
@@ -1023,22 +1103,20 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
     refresh();
 }
 
-void FileBrowser::makeSpaceForYaxis() {
-    menu_width += 5;
+void FileBrowser::makeSpaceForYaxis(int s) {
+    yaxis_spacing = s;
     handleResize(true);
 }
 
 void FileBrowser::handleResize(bool force) {
     if (resize_flag || force) {
         resize_flag = false;
-        int sizey, sizex;
 
         endwin();  // required
         refresh(); // required
         clear();   // required
 
         resize_term(LINES, COLS);
-        getmaxyx(stdscr, sizey, sizex);
 
         initAllWindows();
         
@@ -1051,6 +1129,7 @@ void FileBrowser::handleResize(bool force) {
         wrefresh(cmd_window);
         refresh();
 
+        getmaxyx(main_window, mainwin_y, mainwin_x);
     }
 }
 
@@ -1085,7 +1164,7 @@ void FileBrowser::handleMenuSelect() {
 
 void FileBrowser::helpWindow() {
     int margin = 6;
-    WINDOW* help = newwin(terminal_size_y - 2*margin, terminal_size_x - 2* margin, margin, margin);
+    WINDOW* help = newwin(getmaxy(stdscr) - 2*margin, getmaxx(stdscr) - 2* margin, margin, margin);
 
     int line = 0;
     auto helpline = [&line, &help] (std::string text) {
@@ -1107,6 +1186,7 @@ void FileBrowser::helpWindow() {
     helpline("Go to bottom ......... <G>");
     helpline("Plot selected ........ <ENTER/LMB>");
     helpline("Cycle graphics mode .. <t>");
+    helpline("Resize object menu ... <F1/F2>");
     helpline("Quit ................. <q/Ctrl+C>");
 
     line = 0;

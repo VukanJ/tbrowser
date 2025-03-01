@@ -57,22 +57,22 @@ enum BLOCKS_code_2x2 : std::uint8_t {
 };
 
 enum BLOCKS_3x2 : std::uint8_t {
-    A_LOWER_LEFT,   // "🬏",
-    A_LOWER_RIGHT,  // "🬞",
-    A_LOWER_SLAB,   // "🬭",
-    A_STAIRS_L,     // "🬱",
-    A_STAIRS_R,     // "🬵",
-    A_SMALL_BLOCK,  // "🬹",
-    A_LEFT_PILLAR,  // "🬓",
-    A_RIGHT_PILLAR, // "🬦",
-    A_LEFT_WALL,    // "▌",
-    A_RIGHT_WALL,   // "▐",
-    A_STEEP_L,      // "🬲",
-    A_STEEP_R,      // "🬷",
-    A_BSTAIR_L,     // "🬺",
-    A_BSTAIR_R,     // "🬻",
-    A_FULL_BLOCK,   // "█"
-    A_VOID          
+    a2_LOWER_LEFT,   // "🬏",
+    a2_LOWER_RIGHT,  // "🬞",
+    a2_LOWER_SLAB,   // "🬭",
+    a2_STAIRS_L,     // "🬱",
+    a2_STAIRS_R,     // "🬵",
+    a2_SMALL_BLOCK,  // "🬹",
+    a2_LEFT_PILLAR,  // "🬓",
+    a2_RIGHT_PILLAR, // "🬦",
+    a2_LEFT_WALL,    // "▌",
+    a2_RIGHT_WALL,   // "▐",
+    a2_STEEP_L,      // "🬲",
+    a2_STEEP_R,      // "🬷",
+    a2_BSTAIR_L,     // "🬺",
+    a2_BSTAIR_R,     // "🬻",
+    a2_FULL_BLOCK,   // "█"
+    a2_VOID          
 };
 enum BLOCKS_code_3x2 : std::uint8_t {
     EC_LOWER_LEFT   = 0b100000, // "🬏", 
@@ -162,22 +162,22 @@ inline std::unordered_map<BLOCKS_code_2x2, BLOCKS_2x2> ascii_map_2x2 = {
 };
 
 inline std::unordered_map<std::uint8_t, std::uint8_t> ascii_map_3x2 = {
-    {EC_VOID,         A_VOID},
-    {EC_LOWER_LEFT,   A_LOWER_LEFT},
-    {EC_LOWER_RIGHT,  A_LOWER_RIGHT},
-    {EC_LOWER_SLAB,   A_LOWER_SLAB},
-    {EC_STAIRS_L,     A_STAIRS_L},
-    {EC_STAIRS_R,     A_STAIRS_R},
-    {EC_SMALL_BLOCK,  A_SMALL_BLOCK},
-    {EC_LEFT_PILLAR,  A_LEFT_PILLAR},
-    {EC_RIGHT_PILLAR, A_RIGHT_PILLAR},
-    {EC_LEFT_WALL,    A_LEFT_WALL},
-    {EC_RIGHT_WALL,   A_RIGHT_WALL},
-    {EC_STEEP_L,      A_STEEP_L},
-    {EC_STEEP_R,      A_STEEP_R},
-    {EC_BSTAIR_L,     A_BSTAIR_L},
-    {EC_BSTAIR_R,     A_BSTAIR_R},
-    {EC_FULL_BLOCK,   A_FULL_BLOCK},
+    {EC_VOID,         a2_VOID},
+    {EC_LOWER_LEFT,   a2_LOWER_LEFT},
+    {EC_LOWER_RIGHT,  a2_LOWER_RIGHT},
+    {EC_LOWER_SLAB,   a2_LOWER_SLAB},
+    {EC_STAIRS_L,     a2_STAIRS_L},
+    {EC_STAIRS_R,     a2_STAIRS_R},
+    {EC_SMALL_BLOCK,  a2_SMALL_BLOCK},
+    {EC_LEFT_PILLAR,  a2_LEFT_PILLAR},
+    {EC_RIGHT_PILLAR, a2_RIGHT_PILLAR},
+    {EC_LEFT_WALL,    a2_LEFT_WALL},
+    {EC_RIGHT_WALL,   a2_RIGHT_WALL},
+    {EC_STEEP_L,      a2_STEEP_L},
+    {EC_STEEP_R,      a2_STEEP_R},
+    {EC_BSTAIR_L,     a2_BSTAIR_L},
+    {EC_BSTAIR_R,     a2_BSTAIR_R},
+    {EC_FULL_BLOCK,   a2_FULL_BLOCK},
 };
 
 inline std::unordered_map<std::uint8_t, std::uint8_t> ascii_map_4x2 = {

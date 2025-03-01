@@ -6,19 +6,23 @@
 
 class AxisTicks {
 public:
-    AxisTicks(double vmin, double vmax);
+    AxisTicks(double vmin, double vmax, int napprox=10);
+
+    double tickPosition(int i) const;
+    double min() const;
+    double max() const;
+
+    double minAdjusted() const;
+    double maxAdjusted() const;
+
+    int maxLabelWidth() const;
+
     std::vector<double> values_d;
     std::vector<long> values_i;
     std::vector<std::string> values_str;
     bool integer;
     long E = 0; // Exponent
     int nticks = 1;
-
-    double min() const;
-    double max() const;
-
-    double min_adjusted() const;
-    double max_adjusted() const;
 
 private:
     // data minima and maxima

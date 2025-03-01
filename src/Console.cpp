@@ -265,18 +265,18 @@ void Console::redraw(int posy, int posx) {
 
     if (entering_draw_command) {
         // Draw blinking cursor
-        attron(A_REVERSE);
         if (curs_offset > 0) {
             // Draw highlighted letter
+            attron(A_REVERSE);
             mvprintw(posy, posx + current_input.size() - curs_offset, "%c", current_input[current_input.size() - curs_offset]);
+            attroff(A_REVERSE);
         }
         else {
             // Just draw the cursor
             attron(A_BLINK);
-            mvprintw(posy, posx + current_input.size(), "█");
+            mvprintw(posy, posx + current_input.size(), " ");
             attroff(A_BLINK);
         }
-        attroff(A_REVERSE);
     }
 }
 

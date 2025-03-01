@@ -58,11 +58,12 @@ private:
     void plotHistogram(TTree*, TLeaf*);
     void plotHistogram(const Console::DrawArgs&);
     void plot2DHistogram(const Console::DrawArgs&);
-    void plotAxes(const AxisTicks&, int, int, int, int, bool force_range);
+    void plotXAxis(const AxisTicks&, bool force_range);
+    void plotYAxis(const AxisTicks&, bool force_range);
     void plotCanvasAnnotations(TH1* hist, int winy, int winx);
     void plotCanvasAnnotations(TH2* hist, int winy, int winx);
-    void plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, int binsx) const;
-    void plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy, int binsx);
+    void plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const;
+    void plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx);
     void drawEssentials();
 
     // Window refreshing
@@ -71,7 +72,7 @@ private:
     void helpWindow();
     void drawColorWindow();
     TTree* getActiveTTree();
-    void makeSpaceForYaxis();
+    void makeSpaceForYaxis(int s);
     Console console;
 
     int getBinsx();
@@ -88,14 +89,14 @@ private:
 
     int mainwin_x;
     int mainwin_y;
-    int terminal_size_y;
-    int terminal_size_x;
 
     int menu_width = 20;
     int bottom_height = 7;
+    int yaxis_spacing = 0;
 
     int selected_pos = 0;
     int menu_scroll_pos = 0;
+    constexpr static float top_hist_clear = 1.1; // Extra space
 
     // Toggles
     bool showstats = true;

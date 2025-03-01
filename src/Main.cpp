@@ -30,6 +30,7 @@
 // - [ ] TH2 plotting
 // - [ ] Tab completion
 // - [ ] Histogram buffer (quick redraw)
+// - [x] Menu resize
 // - [x] Make log toggle command dependent
 // - [x] Help window <?>
 // - [x] Console delete fix

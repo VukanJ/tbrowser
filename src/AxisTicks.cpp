@@ -1,18 +1,19 @@
 #include "AxisTicks.h"
 #include "TAxis.h"
 #include "definitions.h"
+#include <algorithm>
 #include <cmath>
 #include <ncurses.h>
 #include <cassert>
 
-AxisTicks::AxisTicks(double min, double max) 
+AxisTicks::AxisTicks(double min, double max, int napprox) 
     : vmin(min), vmax(max) {
     // Compute range of histogram x axis
 
     // mvprintw(18, 20, "xmin %f", vmin);
     // mvprintw(19, 20, "xmax %f", vmax);
     {
-        int nbins_approx = 10;
+        int nbins_approx = napprox;
         double range = (vmax - vmin);
         double rawStep = (vmax - vmin) / nbins_approx;
         double mag = floor(log10(range / nbins_approx));
@@ -112,6 +113,10 @@ AxisTicks::AxisTicks(double min, double max)
     assert(static_cast<int>(values_str.size()) == nticks);
 }
 
+double AxisTicks::tickPosition(int i) const {
+    return values_d[i] * std::pow(10.0, E);
+}
+
 double AxisTicks::min() const {
     return vmin;
 }
@@ -120,10 +125,19 @@ double AxisTicks::max() const {
     return vmax;
 }
 
-double AxisTicks::min_adjusted() const {
+double AxisTicks::minAdjusted() const {
     return vmin_adjust;
 }
 
-double AxisTicks::max_adjusted() const {
+double AxisTicks::maxAdjusted() const {
     return vmax_adjust;
+}
+
+int AxisTicks::maxLabelWidth() const {
+    auto maxlabel = std::max_element(values_str.begin(), values_str.end(), 
+            [](const auto& str1, const auto& str2){ return str1.size() < str2.size(); });
+    if (maxlabel != values_str.end()) {
+        return maxlabel->size();
+    }
+    return 0;
 }
