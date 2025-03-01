@@ -1092,8 +1092,10 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             goBottom();
             break;
         case '/':
-            searchMode.isActive = true;
-            searchMode.input.clear();
+            searchMode.isActive = !searchMode.isActive;
+            if (searchMode.isActive) {
+                searchMode.input.clear();
+            }
             break;
         case 's':
             toggleStatsBox();
@@ -1114,21 +1116,11 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             colorWindow.show = !colorWindow.show;
             break;
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
-            if (searchMode.isActive) {
-                searchMode.isActive = false;
-            }
-            else {
-                handleMenuSelect();
-            }
+            handleMenuSelect();
             break;
         case '?':
             helpWindow();
             skipDraw = true;
-            break;
-        case 27:
-            if (searchMode.isActive) {
-                searchMode.isActive = false;
-            }
             break;
         default:
             if (console.validChar(key)) {
@@ -1246,7 +1238,7 @@ void FileBrowser::helpWindow() {
     attroff(A_UNDERLINE);
     line++;
     helpline("Show help ............ <?>");
-    helpline("Enter search mode .... </>");
+    helpline("Toggle search mode ... </>");
     helpline("Move through menu .... <Arrow keys/Mouse Wheel>");
     helpline("Open Directory/TTree . <ENTER>");
     helpline("Toggle stats box ..... <s>");
