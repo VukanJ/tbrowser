@@ -44,14 +44,14 @@ public:
 
     using MenuItem = std::tuple<std::string, Node*>;
     // Return n-th listed RootFile element
-    std::optional<MenuItem> getEntry(int);
+    std::optional<MenuItem> getEntry(int, bool searchMode=false);
     std::vector<MenuItem> displayList;
 
     // Name (title)
     std::string toString(Node*);
     
     // Return number of elements to be displayed in gui
-    int menuLength();
+    int menuLength(bool searchMode=false);
 
     // Object address storage
     std::vector<TDirectory*> m_directories;

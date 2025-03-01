@@ -132,7 +132,7 @@ private:
         std::string input;
         static bool isBranchChar(int key);
     } searchMode;
-    void updateSeachResults();
+    void updateSearchResults();
 };
 
 #endif // BROWSER_H

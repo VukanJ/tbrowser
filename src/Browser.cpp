@@ -255,7 +255,7 @@ void FileBrowser::selectionDown() {
         menu_scroll_pos++;
     }
     else {
-        selected_pos = std::min<int>(std::min<int>(root_file.menuLength(), getmaxy(dir_window) - 3), selected_pos + 1); 
+        selected_pos = std::min<int>(std::min<int>(root_file.menuLength(searchMode.isActive), getmaxy(dir_window) - 3), selected_pos + 1); 
     }
 }
 
@@ -273,7 +273,7 @@ void FileBrowser::goTop() {
 
 void FileBrowser::goBottom() {
     selected_pos = getmaxy(dir_window) - 3;
-    menu_scroll_pos = root_file.menuLength() - getmaxy(dir_window) + 2;
+    menu_scroll_pos = root_file.menuLength(searchMode.isActive) - getmaxy(dir_window) + 2;
 }
 
 void FileBrowser::toggleStatsBox() {
@@ -1035,13 +1035,13 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
     if (searchMode.isActive) {
         if (SearchMode::isBranchChar(key)) {
             searchMode.input += static_cast<char>(key);
-            updateSeachResults();
+            updateSearchResults();
             return;
         }
         else if (key == KEY_BACKSPACE || key == KEY_DL) {
             if (!searchMode.input.empty()) {
                 searchMode.input.pop_back();
-                updateSeachResults();
+                updateSearchResults();
                 return;
             }
         }
@@ -1153,7 +1153,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
     refresh();
 }
 
-void FileBrowser::updateSeachResults() {
+void FileBrowser::updateSearchResults() {
     for (auto& [name, node] : root_file.displayList) {
         if (node->type == NodeType::TLEAF) {
             if (string_contains(name, searchMode.input)) {
@@ -1216,7 +1216,7 @@ void FileBrowser::drawEssentials() {
 }
 
 void FileBrowser::handleMenuSelect() {
-    auto fetch = root_file.getEntry(selected_pos + menu_scroll_pos);
+    auto fetch = root_file.getEntry(selected_pos + menu_scroll_pos, searchMode.isActive);
     if (!fetch.has_value()) {
         return;
     }
@@ -1246,7 +1246,7 @@ void FileBrowser::helpWindow() {
     attroff(A_UNDERLINE);
     line++;
     helpline("Show help ............ <?>");
-    helpline("Search branch ........ </>");
+    helpline("Enter search mode .... </>");
     helpline("Move through menu .... <Arrow keys/Mouse Wheel>");
     helpline("Open Directory/TTree . <ENTER>");
     helpline("Toggle stats box ..... <s>");

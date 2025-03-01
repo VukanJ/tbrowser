@@ -54,11 +54,12 @@ void RootFile::populateMenu(Node* mothernode, int nesting) {
     }
 }
 
-std::optional<RootFile::MenuItem> RootFile::getEntry(int i) {
+std::optional<RootFile::MenuItem> RootFile::getEntry(int i, bool searchMode) {
     // Return reference to i-th open entry
     int entry = 0;
     for (int j = 0; auto& [_, node] : displayList) {
-        if (node->openState & RootFile::Node::LISTED) {
+        bool criterion = searchMode ? node->showInSearch : node->openState & RootFile::Node::LISTED;
+        if (criterion) {
             if (entry == i) {
                 return displayList[j];
             }
@@ -69,12 +70,21 @@ std::optional<RootFile::MenuItem> RootFile::getEntry(int i) {
     return std::nullopt;
 }
 
-int RootFile::menuLength() {
+int RootFile::menuLength(bool searchMode) {
     // Return number of open entries
     int length = 0;
-    for (const auto& [_, node] : displayList) {
-        if (node->openState & RootFile::Node::LISTED) {
-            length++;
+    if (searchMode) {
+        for (const auto& [_, node] : displayList) {
+            if (node->showInSearch) {
+                length++;
+            }
+        }
+    }
+    else {
+        for (const auto& [_, node] : displayList) {
+            if (node->openState & RootFile::Node::LISTED) {
+                length++;
+            }
         }
     }
     return length;
