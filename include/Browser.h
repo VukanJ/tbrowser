@@ -60,8 +60,8 @@ private:
     void plot2DHistogram(const Console::DrawArgs&);
     void plotXAxis(const AxisTicks&, bool force_range);
     void plotYAxis(const AxisTicks&, bool force_range);
-    void plotCanvasAnnotations(TH1* hist, int winy, int winx);
-    void plotCanvasAnnotations(TH2* hist, int winy, int winx);
+    void plotCanvasAnnotations(TH1* hist);
+    void plotCanvasAnnotations(TH2* hist);
     void plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const;
     void plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx);
     void drawEssentials();
@@ -92,7 +92,7 @@ private:
 
     int menu_width = 20;
     int bottom_height = 7;
-    int yaxis_spacing = 0;
+    int yaxis_spacing = 5;
 
     int selected_pos = 0;
     int menu_scroll_pos = 0;

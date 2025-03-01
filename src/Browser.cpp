@@ -363,10 +363,10 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     const AxisTicks xaxis(min, max);
     const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5);
 
-    plotYAxis(yaxis, false);
-    plotXAxis(xaxis, false);
+    plotYAxis(yaxis, true);
+    plotXAxis(xaxis, true); // looks not right if false
     plotASCIIHistogram(&hist, bins_y, bins_x);
-    plotCanvasAnnotations(&hist, winy, winx);
+    plotCanvasAnnotations(&hist);
 
     refresh();
 }
@@ -470,10 +470,10 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         const AxisTicks xaxis(min, max);
         const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5);
 
-        plotYAxis(yaxis, false);
+        plotYAxis(yaxis, true);
         plotXAxis(xaxis, true);
         plotASCIIHistogram(&hist, bins_y, bins_x);
-        plotCanvasAnnotations(&hist, winy, winx);
+        plotCanvasAnnotations(&hist);
     }
     else {
         console.setError("Branch not found");
@@ -594,7 +594,7 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, true);
         plotASCIIHistogram2D(&hist2d, bins_y, bins_x);
-        plotCanvasAnnotations(&hist2d, winy, winx);
+        plotCanvasAnnotations(&hist2d);
     }
     else {
         console.setError("Branch not found");
@@ -715,10 +715,10 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
 void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
     double max_height = hist->GetAt(hist->GetMaximumBin());
 
-    clear();
-    refresh();
-    wclear(main_window);
-    wrefresh(main_window);
+    //clear();
+    //refresh();
+    //wclear(main_window);
+    //wrefresh(main_window);
 
     // Draw ASCII art
     for (int x = 0; x < binsx; x++) {
@@ -735,8 +735,10 @@ void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
     wrefresh(main_window);
 }
 
-void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
+void FileBrowser::plotCanvasAnnotations(TH1* hist) {
     // Plot Title
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
     box(main_window, 0, 0);
     wrefresh(main_window);
     attron(A_ITALIC);
@@ -766,8 +768,10 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist, int winy, int winx) {
     }
 }
 
-void FileBrowser::plotCanvasAnnotations(TH2* hist, int winy, int winx) {
+void FileBrowser::plotCanvasAnnotations(TH2* hist) {
     // Plot Title
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
     box(main_window, 0, 0);
     wrefresh(main_window);
     attron(A_ITALIC);
@@ -1104,7 +1108,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 }
 
 void FileBrowser::makeSpaceForYaxis(int s) {
-    yaxis_spacing = s;
+    yaxis_spacing = std::max<int>(yaxis_spacing, s);
     handleResize(true);
 }
 
