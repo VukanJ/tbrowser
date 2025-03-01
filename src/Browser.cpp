@@ -64,7 +64,7 @@ void FileBrowser::initAllWindows() {
     int sizey = getmaxy(stdscr);
     createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
     createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
-    createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 3, 20 + 5);
+    createWindow(cmd_window, 3, sizex - 25, sizey - bottom_height + 3, 20 + 5);
 }
 
 FileBrowser::~FileBrowser() {
@@ -199,7 +199,8 @@ void FileBrowser::printDirectories() {
             attron(A_REVERSE);
             attron(A_ITALIC);
         }
-        mvprintw(y + entry, x, "%.20s", entry_label.c_str());
+        auto entryfmt = fmtstring("%.{}s", menu_width);
+        mvprintw(y + entry, x, entryfmt.c_str(), entry_label.c_str());
         if (entry == selected_pos) {
             attroff(A_REVERSE);
             attroff(A_ITALIC);
@@ -952,6 +953,15 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             selectionUp();
             break;
         case KEY_F(1):
+            menu_width = std::min<int>(menu_width + 3, getmaxx(stdscr) - 10);
+            handleResize(true);
+            break;
+        case KEY_F(2):
+            menu_width = std::max<int>(menu_width - 3, 10);
+            handleResize(true);
+            break;
+        case KEY_F(3):
+            makeSpaceForYaxis();
             break;
         case 'q':
             is_running = false;
@@ -1011,6 +1021,11 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         console.entering_draw_command = true;
     }
     refresh();
+}
+
+void FileBrowser::makeSpaceForYaxis() {
+    menu_width += 5;
+    handleResize(true);
 }
 
 void FileBrowser::handleResize(bool force) {

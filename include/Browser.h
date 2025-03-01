@@ -71,6 +71,7 @@ private:
     void helpWindow();
     void drawColorWindow();
     TTree* getActiveTTree();
+    void makeSpaceForYaxis();
     Console console;
 
     int getBinsx();
