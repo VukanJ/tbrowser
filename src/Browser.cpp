@@ -44,6 +44,7 @@ volatile bool resize_flag = false;
 
 FileBrowser::FileBrowser() {
     initNcurses();
+    colorWindow.init();
     loadSettings();
     int sizex = getmaxx(stdscr);
     int sizey = getmaxy(stdscr);
@@ -83,21 +84,26 @@ void FileBrowser::initNcurses() {
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
 
     start_color();
-    init_pair(blue, COLOR_BLUE, COLOR_BLACK);
-    init_pair(green, COLOR_GREEN, COLOR_BLACK);
-    init_pair(red, COLOR_RED, COLOR_BLACK);
-    init_pair(white, COLOR_WHITE, COLOR_BLACK);
-    init_pair(yellow, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(white_on_blue, COLOR_WHITE, COLOR_BLUE);
-    init_pair(whiteblue, 33, COLOR_BLACK);
+    init_pair(TermColor::col_blue, COLOR_BLUE, COLOR_BLACK);
+    init_pair(TermColor::col_green, COLOR_GREEN, COLOR_BLACK);
+    init_pair(TermColor::col_red, COLOR_RED, COLOR_BLACK);
+    init_pair(TermColor::col_white, COLOR_WHITE, COLOR_BLACK);
+    init_pair(TermColor::col_yellow, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(TermColor::col_white_on_blue, COLOR_WHITE, COLOR_BLUE);
+    init_pair(TermColor::col_whiteblue, 33, COLOR_BLACK);
+    init_pair(TermColor::col_start_palette, 1, COLOR_BLACK);
 
     // initialize grayscale
-    int grayscale = grayscale_start;
+    int grayscale = col_grayscale_start;
     init_pair(grayscale++, 16, COLOR_BLACK); // True black
     for (int c = 232; c <= 255; ++c) {
         init_pair(grayscale++, c, COLOR_BLACK);
     }
     init_pair(grayscale++, 15, COLOR_BLACK); // True white
+
+    for (int c = col_start_palette, col256 = 17; col256 < 231; ++col256) {
+        init_pair(c++, col256, COLOR_BLACK);
+    }
 }
 
 void FileBrowser::loadSettings() {
@@ -164,7 +170,7 @@ void FileBrowser::printDirectories() {
     auto print_entry = [this, &entry, y, x](std::string name, RootFile::Node* node){
         std::string entry_label;
         name = std::string(node->nesting * 2, ' ') + name;
-        color col = white;
+        TermColor col = col_white;
         int attr = A_NORMAL;
         switch (node->type) {
             case NodeType::DIRECTORY:
@@ -172,12 +178,12 @@ void FileBrowser::printDirectories() {
                     { entry_label = fmtstring("{} {}", SYMB_FOLDER_OPEN, name); }
                 else
                     { entry_label = fmtstring("{} {}", SYMB_FOLDER_CLOSED, name); }
-                col = yellow;
+                col = col_yellow;
                 break;
             case NodeType::TLEAF:   entry_label = fmtstring("{} {}", SYMB_TLEAF, name); attr = A_ITALIC; break;
-            case NodeType::TTREE:   entry_label = fmtstring("{} {}", SYMB_TTREE, name); col = green; attr = A_BOLD; break;
-            case NodeType::HIST:    entry_label = fmtstring("{} {}", SYMB_THIST, name); col = blue; attr = A_ITALIC; break;
-            case NodeType::UNKNOWN: entry_label = fmtstring("{} {}", SYMB_TUNKNOWN, name); col = red; break;
+            case NodeType::TTREE:   entry_label = fmtstring("{} {}", SYMB_TTREE, name); col = col_green; attr = A_BOLD; break;
+            case NodeType::HIST:    entry_label = fmtstring("{} {}", SYMB_THIST, name); col = col_blue; attr = A_ITALIC; break;
+            case NodeType::UNKNOWN: entry_label = fmtstring("{} {}", SYMB_TUNKNOWN, name); col = col_red; break;
         }
         attron(COLOR_PAIR(col));
         attron(attr);
@@ -248,6 +254,49 @@ void FileBrowser::toggleLogy() {
     logscale = !logscale; 
 } 
 
+int FileBrowser::getBinsx() { 
+    return 2 * mainwin_x - 4; 
+}
+
+int FileBrowser::getBinsy() { 
+    return blockmode * mainwin_y - 2 * blockmode;
+}
+
+void FileBrowser::toggleBlockMode() {
+    blockmode++;
+    if (blockmode >= 5) blockmode = 2;
+    attron(A_BOLD);
+    mvprintw(0, 0, "%ix2 char mode", blockmode);
+    attroff(A_BOLD);
+    clrtoeol();
+}
+
+TTree* FileBrowser::getActiveTTree() {
+    // Get selected tree or the tree of the currently selected branch
+    TTree* ttree = nullptr;
+    std::size_t entry = selected_pos + menu_scroll_pos;
+    if (entry < root_file.displayList.size()) {
+        auto [name, node] = root_file.displayList.at(entry);
+        if (node->type == NodeType::TLEAF) {
+            ttree = root_file.m_trees[node->mother->index];
+        }
+        else if (node->type == NodeType::TTREE) {
+            ttree = root_file.m_trees[node->index];
+        }
+    }
+
+    if (ttree == nullptr) {
+        // No tree selected, return obvious single choice
+        if (root_file.m_trees.size() == 1) {
+            return root_file.m_trees[0];
+        }
+    }
+
+    console.setError("No TTree found in file!");
+    return ttree;
+}
+
+
 void FileBrowser::plotHistogram() {
     if (console.hasCommand()) {
         if (std::get<0>(console.current_args).hist2d) {
@@ -267,6 +316,10 @@ void FileBrowser::plotHistogram() {
             }
         }
     }
+}
+
+bool FileBrowser::isRunning() const {
+    return is_running;
 }
 
 void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
@@ -304,31 +357,6 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     plotAxes(xaxis, winy, winx, mainwin_y, mainwin_x, false);
 
     refresh();
-}
-
-TTree* FileBrowser::getActiveTTree() {
-    // Get selected tree or the tree of the currently selected branch
-    TTree* ttree = nullptr;
-    std::size_t entry = selected_pos + menu_scroll_pos;
-    if (entry < root_file.displayList.size()) {
-        auto [name, node] = root_file.displayList.at(entry);
-        if (node->type == NodeType::TLEAF) {
-            ttree = root_file.m_trees[node->mother->index];
-        }
-        else if (node->type == NodeType::TTREE) {
-            ttree = root_file.m_trees[node->index];
-        }
-    }
-
-    if (ttree == nullptr) {
-        // No tree selected, return obvious single choice
-        if (root_file.m_trees.size() == 1) {
-            return root_file.m_trees[0];
-        }
-    }
-
-    console.setError("No TTree found in file!");
-    return ttree;
 }
 
 void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
@@ -575,7 +603,7 @@ void FileBrowser::plotASCIIHistogram(int winy, int winx, TH1D* hist, int binsy, 
         pixel_y = max_height / binsy;
     }
     // Draw ASCII art
-    attron(COLOR_PAIR(whiteblue));
+    attron(COLOR_PAIR(col_whiteblue));
     for (int x = 0; x < binsx / 2; x++) {
         auto cl = hist->GetBinContent(2 * x);
         auto cr = hist->GetBinContent(2 * x + 1);
@@ -686,8 +714,8 @@ void FileBrowser::plotASCIIHistogram2D(int winy, int winx, TH2D* hist, int binsy
         for (int y = 0; y < binsy; y++) {
             auto Z = hist->GetBinContent(x, y);
             if (Z == 0) continue;
-            auto pixel_color = std::lerp(grayscale_start, grayscale_end + 1, Z / max_height);
-            pixel_color = std::clamp<int>(pixel_color, grayscale_start, grayscale_end - 1);
+            auto pixel_color = std::lerp(col_grayscale_start, col_grayscale_end + 1, Z / max_height);
+            pixel_color = std::clamp<int>(pixel_color, col_grayscale_start, col_grayscale_end - 1);
             wattron(main_window, COLOR_PAIR(pixel_color));
             mvwprintw(main_window, binsy - y, x, "█");
             wattroff(main_window, COLOR_PAIR(pixel_color));
@@ -783,7 +811,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey
     // Write numbers below axis at tick positions
     auto nchars = sizex - 1;
     std::vector<char> xaxis_chars(nchars, '-');
-    if (ticks.E != 0) { attron(COLOR_PAIR(yellow)); }
+    if (ticks.E != 0) { attron(COLOR_PAIR(col_yellow)); }
     for (int i = 0; i < nBinsX; ++i) {
         double tickPos = ticks.values_d[i] * std::pow(10.0, ticks.E);
         int charpos = (tickPos - xmin) / rangeX * nchars;
@@ -807,7 +835,7 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey
         attroff(A_BOLD);
         attroff(A_ITALIC);
     }
-    if (ticks.E != 0) { attroff(COLOR_PAIR(yellow)); }
+    if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
     
     // Draw the tick lines
     for (int i = 0; char c : xaxis_chars) {
@@ -817,14 +845,14 @@ void FileBrowser::plotAxes(const AxisTicks& ticks, int winy, int winx, int sizey
 
     // Print exponent if needed
     if (ticks.E != 0) {
-        attron(COLOR_PAIR(yellow));
+        attron(COLOR_PAIR(col_yellow));
 #if USE_UNICODE
         std::string magnitude = fmtstring("x10{}", make_superscript(ticks.E));
 #else
         std::string magnitude = fmtstring("x10^{}", make_superscript(ticks.E));
 #endif
         mvprintw(winy+sizey-1, winx+sizex-magnitude.size()-2, " %s ", magnitude.c_str());
-        attroff(COLOR_PAIR(yellow));
+        attroff(COLOR_PAIR(col_yellow));
     }
 }
 
@@ -832,13 +860,13 @@ void FileBrowser::refreshCMDWindow() {
     int posx = getbegx(cmd_window) + 1;
     int posy = getbegy(cmd_window) + 1;
     console.redraw(posy, posx);
-    wattron(cmd_window, COLOR_PAIR(blue));
+    wattron(cmd_window, COLOR_PAIR(col_blue));
     box(cmd_window, 0, 0);
-    wattroff(cmd_window, COLOR_PAIR(blue));
+    wattroff(cmd_window, COLOR_PAIR(col_blue));
     wrefresh(cmd_window);
 }
 
-bool FileBrowser::isClickInWindow(WINDOW*& win, int y, int x) const {
+bool FileBrowser::isClickInWindow(WINDOW*& win, int y, int x) {
     int posy, posx;
     int sizey, sizex;
     getmaxyx(win, sizey, sizex);
@@ -856,6 +884,9 @@ void FileBrowser::handleMouseClick(int y, int x) {
         int posy = getbegy(dir_window);
         selected_pos = y - posy - 1;
         handleMenuSelect();
+    }
+    else if (colorWindow.show && isClickInWindow(colorWindow.color_window, y, x)) {
+        colorWindow.selectFromMouseClick(y, x);
     }
     else if (isClickInWindow(cmd_window, y, x)) {
         console.entering_draw_command = true;
@@ -881,6 +912,9 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             }
         }
         return;
+    }
+    if (colorWindow.show) {
+        colorWindow.render();
     }
 
     if (console.entering_draw_command) {
@@ -933,6 +967,9 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         case 'd':
             console.entering_draw_command = true;
             break;
+        case 'C':
+            colorWindow.show = !colorWindow.show;
+            break;
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
             handleMenuSelect();
             break;
@@ -960,7 +997,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         nonsense.clear();
         console.entering_draw_command = true;
     }
-
+    refresh();
 }
 
 void FileBrowser::handleResize() {
@@ -983,13 +1020,10 @@ void FileBrowser::handleResize() {
 }
 
 void FileBrowser::createWindow(WINDOW*& win, int size_y, int size_x, int pos_y, int pos_x) {
-    if (win) {
+    if (win != nullptr) {
         delwin(win);
     }
     win = newwin(size_y, size_x, pos_y, pos_x);
-    refresh();
-    box(win, 0, 0);
-    wrefresh(win);
 }
 
 void FileBrowser::drawEssentials() {
@@ -1065,7 +1099,7 @@ void FileBrowser::helpWindow() {
     line++;
     mvwprintw(help, line++, 53, "26 grayscale steps");
     line++;
-    for (int j = 0, i = grayscale_start; i < grayscale_end; ++i, ++j) {
+    for (int j = 0, i = col_grayscale_start; i < col_grayscale_end; ++i, ++j) {
         mvwprintw(help, line - 1, 53 + j, "v");
         wattron(help, COLOR_PAIR(i));
         mvwprintw(help, line, 53 + j, "█");
@@ -1077,9 +1111,64 @@ void FileBrowser::helpWindow() {
     mvprintw(getbegy(help) + getmaxy(help) - 2, getbegy(help) + 1, "Repository: github.com/VukanJ/tbrowser");
     attroff(A_ITALIC);
 
-    wattron(help, COLOR_PAIR(yellow));
+    wattron(help, COLOR_PAIR(col_yellow));
     box(help, 0, 0);
     wrefresh(help);
-    wattroff(help, COLOR_PAIR(yellow));
+    wattroff(help, COLOR_PAIR(col_yellow));
     delwin(help);
+}
+
+void FileBrowser::ColorWindow::render() {
+    box(color_window, 0, 0);
+    if (color_window == nullptr) throw;
+
+    wattron(color_window, COLOR_PAIR(selected));
+    wattron(color_window, A_BLINK);
+    wattron(color_window, A_REVERSE);
+    mvwprintw(color_window, 0, 2, "Pick a color");
+    wattroff(color_window, A_REVERSE);
+    wattroff(color_window, A_BLINK);
+    wattroff(color_window, COLOR_PAIR(selected));
+
+    wmove(color_window, 1, 1);
+    int line = 1;
+    wattron(color_window, A_REVERSE);
+    for (int c = col_start_palette - 1; c < col_grayscale_end; ) {
+        for (int j = 0; j < 18; ++j, c++) {
+            if (c >= col_grayscale_end || c < col_start_palette) {
+                wattroff(color_window, A_REVERSE);
+                wprintw(color_window, "XX");
+                wattron(color_window, A_REVERSE);
+            }
+            else {
+                wattron(color_window, COLOR_PAIR(c));
+                wprintw(color_window, "  ");
+                wattroff(color_window, COLOR_PAIR(c));
+            }
+        }
+        wmove(color_window, ++line, 1);
+    }
+    wattroff(color_window, A_REVERSE);
+    
+    wrefresh(color_window);
+}
+
+void FileBrowser::ColorWindow::init() {
+    createWindow(this->color_window, 16, 38, 10, 50);
+}
+
+FileBrowser::ColorWindow::~ColorWindow() {
+    if (color_window != nullptr) {
+        delwin(color_window);
+    }
+}
+
+TermColor FileBrowser::ColorWindow::selectFromMouseClick(int y, int x) {
+    int begy  = getbegy(color_window);
+    int begx  = getbegx(color_window);
+    y -= begy;
+    x -= begx;
+    auto sel = static_cast<TermColor>(col_start_palette + (y * 18) + x / 2);
+    selected = sel;
+    return sel;
 }

@@ -227,26 +227,26 @@ void Console::cursorMove(int pos) {
 
 void Console::redraw(int posy, int posx) {
     // CMD hint
-    attron(COLOR_PAIR(red));
+    attron(COLOR_PAIR(col_red));
     mvprintw(posy, posx - 6, "Draw(");
-    attroff(COLOR_PAIR(red));
+    attroff(COLOR_PAIR(col_red));
 
     bool error_display = false;
     if (!last_error.empty()) {
         error_display = true;
-        attron(COLOR_PAIR(red));
+        attron(COLOR_PAIR(col_red));
         mvprintw(posy, posx, "%s", last_error.c_str());
-        attroff(COLOR_PAIR(red));
+        attroff(COLOR_PAIR(col_red));
         last_error.clear();
     }
     else {
         // Command state
         if (entering_draw_command) {
-            attron(COLOR_PAIR(yellow));
+            attron(COLOR_PAIR(col_yellow));
             attron(A_REVERSE);
             mvprintw(posy-2, posx, " INPUT ");
             attroff(A_REVERSE);
-            attroff(COLOR_PAIR(yellow));
+            attroff(COLOR_PAIR(col_yellow));
         }
         else {
             mvprintw(posy-2, posx, "       ");

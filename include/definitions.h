@@ -208,9 +208,9 @@ inline std::unordered_map<std::uint8_t, std::uint8_t> ascii_map_4x2 = {
     {BC_VOID, B_VOID}
 };
 
-enum color {
-    blue=1, green, red, white, yellow, white_on_blue, whiteblue,
-    grayscale_start, grayscale_end=grayscale_start+26
+enum TermColor {
+    col_blue=1, col_green, col_red, col_white, col_yellow, col_white_on_blue, col_whiteblue,
+    col_start_palette, col_end_palette = col_start_palette + (231-17), col_grayscale_start, col_grayscale_end=col_grayscale_start+26
 };
 
 #ifndef USE_UNICODE
