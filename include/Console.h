@@ -6,14 +6,17 @@
 #include <vector>
 #include <string>
 #include <unordered_set>
+#include "RootFile.h"
 
 class Console {
 public:
+    Console();
+
     struct FirstDrawArg {
         FirstDrawArg(std::string ex);
         std::string expression;
         std::vector<double> limits;
-       enum class LimitError {
+        enum class LimitError {
             NoError,
             LimitOrdering,
             LimitNumber,
@@ -24,7 +27,8 @@ public:
         bool hist2d = false;
     };
     using DrawArgs = std::tuple<FirstDrawArg, std::string, Option_t*, Long64_t, Long64_t>; // TTreePlayerArgs
-    Console();
+
+    void setTabCompletionDict(const std::vector<RootFile::MenuItem>&);
     void handleInput(int);
     bool validChar(int);
     void cursorMove(int);
@@ -41,11 +45,14 @@ public:
     std::string current_input;
 
 private:
+    void tabComplete();
+
     bool has_command = false;
     std::string last_error;
     int curs_offset = 0;
     std::unordered_set<char> allowed_chars;
     std::vector<std::string> command_buffer;
+    std::vector<std::string> branch_names;
 };
 
 #endif // !CONSOLE_H

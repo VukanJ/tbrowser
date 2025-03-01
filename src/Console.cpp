@@ -163,6 +163,62 @@ bool Console::parse() {
     return valid;
 }
 
+void Console::setTabCompletionDict(const std::vector<RootFile::MenuItem>& dict) {
+    branch_names.reserve(dict.size());
+    for (const auto& [name, node] : dict) {
+        branch_names.push_back(name);
+    }
+}
+
+void Console::tabComplete() {
+    // Get current partial branch
+    if (current_input.empty()) {
+        return;
+    }
+    if (!(isalnum(current_input.back()) || current_input.back() == '_')) {
+        // Some other math symbol: ignore
+        return;
+    }
+    std::string partial;
+    for (int i = current_input.size() - 1; i >= 0; --i) {
+        char c = current_input[i];
+        if (isalnum(c) || c == '_') {
+            partial += c;
+        }
+        else {
+            break;
+        }
+    }
+    // Collect potential matches
+    std::vector<std::string> matches;
+    if (!partial.empty()) {
+        std::reverse(partial.begin(), partial.end());
+        for (auto& b : branch_names) {
+            if (b.starts_with(partial)) {
+                matches.push_back(b);
+            }
+        }
+    }
+    // Find longest match
+    if (matches.empty()) {
+        return;
+    }
+
+    std::string common = matches[0];
+    for (std::size_t i = 1; i < matches.size(); ++i) {
+        auto mismatch_pos = std::mismatch(common.begin(), common.end(), matches[i].begin(), matches[i].end());
+        common.erase(mismatch_pos.first, common.end());
+        if (common.empty()) break;
+    }
+
+    // Replace
+    if (!common.empty()) {
+        current_input.erase(current_input.end() - partial.size(), current_input.end());
+        current_input += common;
+        curs_offset = 0;
+    }
+}
+
 void Console::handleInput(int key) {
     if (validChar(key)) {
         if (curs_offset > 0) {
@@ -209,7 +265,7 @@ void Console::handleInput(int key) {
                 }
                 break;
             case '\t': 
-                current_input += "TAB_WIP";
+                tabComplete();
                 break;
         }
     }
@@ -220,7 +276,7 @@ bool Console::validChar(int c) {
 }
 
 void Console::cursorMove(int pos) {
-    if (pos >= 0 && pos < current_input.size()) {
+    if (pos >= 0 && pos < static_cast<int>(current_input.size())) {
         curs_offset = current_input.size() - pos;
     }
 }
@@ -274,7 +330,7 @@ void Console::redraw(int posy, int posx) {
         else {
             // Just draw the cursor
             attron(A_BLINK);
-            mvprintw(posy, posx + current_input.size(), " ");
+            mvprintw(posy, posx + current_input.size(), "█");
             attroff(A_BLINK);
         }
     }

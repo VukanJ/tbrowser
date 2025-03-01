@@ -165,6 +165,7 @@ void FileBrowser::loadFile(std::string filename) {
     refresh();
 
     root_file.load(filename);
+    console.setTabCompletionDict(root_file.displayList);
 }
 
 void FileBrowser::printDirectories() {
