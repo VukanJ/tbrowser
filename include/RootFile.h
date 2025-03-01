@@ -36,6 +36,7 @@ public:
         enum OpenState {DIR_OPEN = 0b10, LISTED = 0b01, DEFAULT=0b0};
         std::uint8_t openState = DEFAULT;
         int nesting = 0; // for printing
+        bool showInSearch = false; // When search active set to true if match
 
     private:
         void recurseOpen(bool open);

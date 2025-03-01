@@ -1,4 +1,5 @@
 #include <clocale>
+#include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
 #include <iostream>
@@ -8,35 +9,33 @@
 
 #include <ncurses.h>
 #include "Browser.h"
-#include "Console.h"
-#include "AxisTicks.h"
 #include <TError.h>
 
 /*
-🬂🬨🬂🬀🬕🬂🬓🬞🬞🬏 🬞🬭🬏🬞  🬞 🬭🬭  🬭🬭 🬞🬞🬏
- ▐  🬕🬂🬧▐🬀🬁 ▌ ▐▐🬞🬣▐🬁🬋🬏 ▐🬋🬋🬄▐🬀🬁
- 🬉  🬌🬋🬅🬉   🬈🬋🬅 🬆🬁🬄🬇🬋🬅 🬁🬋🬋🬀🬉
+🬂🬨🬂🬀🬕🬂🬓🬞🬞🬏 🬞🬭🬏🬞  🬞 🬭🬭  🬭🬭 🬞🬞🬏 
+ ▐  🬕🬂🬧▐🬀🬁 ▌ ▐▐🬞🬣▐🬁🬋🬏 ▐🬋🬋🬄▐🬀🬁 
+ 🬉  🬌🬋🬅🬉   🬈🬋🬅 🬆🬁🬄🬇🬋🬅 🬁🬋🬋🬀🬉   
 */
-
 
 // TODO
 // - [x] Open obvious tree
 // - [ ] Fix menu scroll
 // - [ ] Make console active tree dependent
 // - [x] histogram spec in drawcall
-// - [ ] y axis
-// - [ ] Toggle button for menu resize
+// - [x] y axis
+// - [x] Toggle button for menu resize
 // - [ ] TH1 plotting
 // - [ ] TH2 plotting
-// - [ ] Tab completion
+// - [x] Tab completion
 // - [ ] Histogram buffer (quick redraw)
 // - [x] Menu resize
 // - [x] Make log toggle command dependent
 // - [x] Help window <?>
 // - [x] Console delete fix
 // - [ ] Console history
+// - [ ] Log y axis ticks
 // - [ ] Console horizontal scroll 
-// - [ ] Search
+// - [x] Search
 // - [x] Obvious tree should be used for plotting
 // - [x] Settings persistence
 
@@ -46,8 +45,7 @@ extern bool resize_flag;
 
 int resize_fd[2]; // PIPE
 
-
-int main (int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
     // Silence ROOT messages including errors
     gErrorIgnoreLevel = kFatal;
 
@@ -82,7 +80,11 @@ int main (int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    pipe(resize_fd);
+    // Make pipe
+    if (pipe(resize_fd) == -1) {
+        perror("ERROR");
+        return EXIT_FAILURE;
+    }
     fcntl(resize_fd[0], F_SETFL, O_NONBLOCK);
     signal(SIGWINCH, [](int) { 
         resize_flag = true; 
@@ -112,7 +114,6 @@ int main (int argc, char* argv[]) {
             int input = getch();
             browser.handleInputEvent(mouse_event, input);
         }
-
     }
 
     return EXIT_SUCCESS;

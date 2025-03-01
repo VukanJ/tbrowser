@@ -209,7 +209,7 @@ inline std::unordered_map<std::uint8_t, std::uint8_t> ascii_map_4x2 = {
 };
 
 enum TermColor {
-    col_blue=1, col_green, col_red, col_white, col_yellow, col_white_on_blue, col_whiteblue,
+    col_blue=1, col_green, col_red, col_white, col_yellow, col_win_bkg, col_whiteblue,
     col_start_palette, col_end_palette = col_start_palette + (231-17), col_grayscale_start, col_grayscale_end=col_grayscale_start+26
 };
 

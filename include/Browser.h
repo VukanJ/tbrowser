@@ -110,22 +110,29 @@ private:
 
     // ROOT
     RootFile root_file;
-
+    
+    // skip next directory draw
     bool skipDraw = false;
 
-    struct ColorWindow {
-        ColorWindow() = default;
-        ~ColorWindow();
+    struct ColorPickerWindow {
+        ColorPickerWindow() = default;
+        ~ColorPickerWindow();
 
         void init(); // Must be delayed
-
         void render();
+        TermColor selectFromMouseClick(int y, int x);
+
         bool show = false;
         TermColor selected = col_blue;
-        TermColor selectFromMouseClick(int y, int x);
         WINDOW* color_window = nullptr;
     } colorWindow;
-    
+
+    struct SearchMode {
+        bool isActive = false;
+        std::string input;
+        static bool isBranchChar(int key);
+    } searchMode;
+    void updateSeachResults();
 };
 
 #endif // BROWSER_H

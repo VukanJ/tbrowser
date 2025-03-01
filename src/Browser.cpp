@@ -92,7 +92,7 @@ void FileBrowser::initNcurses() {
     init_pair(TermColor::col_red, COLOR_RED, COLOR_BLACK);
     init_pair(TermColor::col_white, COLOR_WHITE, COLOR_BLACK);
     init_pair(TermColor::col_yellow, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(TermColor::col_white_on_blue, COLOR_WHITE, COLOR_BLUE);
+    init_pair(TermColor::col_win_bkg, COLOR_WHITE, 237);
     init_pair(TermColor::col_whiteblue, 33, COLOR_BLACK);
     init_pair(TermColor::col_start_palette, 1, COLOR_BLACK);
 
@@ -174,6 +174,11 @@ void FileBrowser::printDirectories() {
     int y = getbegy(dir_window) + 1;
     int maxlines = getmaxy(dir_window) - 2;
 
+    if (searchMode.isActive) {
+        mvprintw(0, 0, "/%s", searchMode.input.c_str());
+        clrtoeol();
+    }
+
     int entry = -menu_scroll_pos;
     auto print_entry = [this, &entry, y, x](std::string name, RootFile::Node* node){
         std::string entry_label;
@@ -213,7 +218,12 @@ void FileBrowser::printDirectories() {
     for (const auto& [name, node] : root_file.displayList) {
         if (entry < 0) entry++;
         else if (entry < maxlines) {
-            if (node->openState & RootFile::Node::LISTED) {
+            bool showCondition = node->openState & RootFile::Node::LISTED;
+            if (searchMode.isActive) {
+                showCondition = node->showInSearch;
+            }
+
+            if (showCondition) {
                 print_entry(name, node);
                 if (entry == selected_pos+1) {
                     auto descr = root_file.toString(node);
@@ -226,6 +236,14 @@ void FileBrowser::printDirectories() {
     }
 
     box(dir_window, 0, 0);
+    if (searchMode.isActive) {
+        wattron(dir_window, A_BOLD);
+        wattron(dir_window, A_REVERSE);
+        mvwprintw(dir_window, y-2, x, "SEARCH MODE");
+        wattroff(dir_window, A_REVERSE);
+        wattroff(dir_window, A_BOLD);
+    }
+
     wrefresh(dir_window);
     // Very important to refresh(), otherwise input appears delayed and program
     // looks glitched while resize
@@ -590,7 +608,7 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
             maxy = miny + 1;
         }
         const AxisTicks xaxis(minx, maxx);
-        const AxisTicks yaxis(miny, maxy);
+        const AxisTicks yaxis(miny, maxy, 5);
 
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, true);
@@ -1013,11 +1031,27 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         drawEssentials();
         return;
     }
+
+    if (searchMode.isActive) {
+        if (SearchMode::isBranchChar(key)) {
+            searchMode.input += static_cast<char>(key);
+            updateSeachResults();
+            return;
+        }
+        else if (key == KEY_BACKSPACE || key == KEY_DL) {
+            if (!searchMode.input.empty()) {
+                searchMode.input.pop_back();
+                updateSeachResults();
+                return;
+            }
+        }
+    }
+
     if (colorWindow.show) {
         colorWindow.render();
     }
 
-    if (console.entering_draw_command) {
+    if (console.entering_draw_command && !searchMode.isActive) {
         if (key == KEY_ENTER || key == 10) {
             if (console.parse()) {
                 plotHistogram();
@@ -1058,7 +1092,8 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             goBottom();
             break;
         case '/':
-            mvprintw(30, 30, "SEARCH");
+            searchMode.isActive = true;
+            searchMode.input.clear();
             break;
         case 's':
             toggleStatsBox();
@@ -1079,11 +1114,21 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             colorWindow.show = !colorWindow.show;
             break;
         case KEY_ENTER: case 10: // ENTER only works with RightShift+Enter
-            handleMenuSelect();
+            if (searchMode.isActive) {
+                searchMode.isActive = false;
+            }
+            else {
+                handleMenuSelect();
+            }
             break;
         case '?':
             helpWindow();
             skipDraw = true;
+            break;
+        case 27:
+            if (searchMode.isActive) {
+                searchMode.isActive = false;
+            }
             break;
         default:
             if (console.validChar(key)) {
@@ -1106,6 +1151,26 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         console.entering_draw_command = true;
     }
     refresh();
+}
+
+void FileBrowser::updateSeachResults() {
+    for (auto& [name, node] : root_file.displayList) {
+        if (node->type == NodeType::TLEAF) {
+            if (string_contains(name, searchMode.input)) {
+                node->showInSearch = true;
+            }
+            else {
+                node->showInSearch = false;
+            }
+        }
+        else {
+            node->showInSearch = false; // Make sure this is always hidden
+        }
+    }
+}
+
+bool FileBrowser::SearchMode::isBranchChar(int key) {
+    return key > 0 && key < 256 && (isalnum(key) || key == '_');
 }
 
 void FileBrowser::makeSpaceForYaxis(int s) {
@@ -1233,12 +1298,13 @@ void FileBrowser::helpWindow() {
 
     wattron(help, COLOR_PAIR(col_yellow));
     box(help, 0, 0);
-    wrefresh(help);
     wattroff(help, COLOR_PAIR(col_yellow));
+    wbkgd(help, COLOR_PAIR(col_win_bkg));
+    wrefresh(help);
     delwin(help);
 }
 
-void FileBrowser::ColorWindow::render() {
+void FileBrowser::ColorPickerWindow::render() {
     box(color_window, 0, 0);
     if (color_window == nullptr) throw;
 
@@ -1273,17 +1339,17 @@ void FileBrowser::ColorWindow::render() {
     wrefresh(color_window);
 }
 
-void FileBrowser::ColorWindow::init() {
+void FileBrowser::ColorPickerWindow::init() {
     createWindow(this->color_window, 16, 38, 10, 50);
 }
 
-FileBrowser::ColorWindow::~ColorWindow() {
+FileBrowser::ColorPickerWindow::~ColorPickerWindow() {
     if (color_window != nullptr) {
         delwin(color_window);
     }
 }
 
-TermColor FileBrowser::ColorWindow::selectFromMouseClick(int y, int x) {
+TermColor FileBrowser::ColorPickerWindow::selectFromMouseClick(int y, int x) {
     int begy  = getbegy(color_window);
     int begx  = getbegx(color_window);
     y -= begy;
