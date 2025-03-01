@@ -46,11 +46,7 @@ FileBrowser::FileBrowser() {
     initNcurses();
     colorWindow.init();
     loadSettings();
-    int sizex = getmaxx(stdscr);
-    int sizey = getmaxy(stdscr);
-    createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
-    createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
-    createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 3, 20 + 5);
+    initAllWindows();
 
     refresh();
     box(dir_window, 0, 0);
@@ -61,6 +57,14 @@ FileBrowser::FileBrowser() {
 
     getmaxyx(stdscr, terminal_size_y, terminal_size_x);
     drawEssentials();
+}
+
+void FileBrowser::initAllWindows() {
+    int sizex = getmaxx(stdscr);
+    int sizey = getmaxy(stdscr);
+    createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
+    createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
+    createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 3, 20 + 5);
 }
 
 FileBrowser::~FileBrowser() {
@@ -136,6 +140,9 @@ void FileBrowser::loadSettings() {
         if (settings_json.contains("statsbox")) {
             showstats = settings_json["statsbox"];
         }
+        if (settings_json.contains("menu_width") && settings_json["menu_width"].is_number()) {
+            menu_width = settings_json["menu_width"];
+        }
     }
 }
 
@@ -148,6 +155,7 @@ void FileBrowser::saveSettings() {
             case 4: settings_json["blockmode"] = "4x2"; break;
         }
         settings_json["statsbox"] = showstats;
+        settings_json["menu_width"] = menu_width;
         saveSettings << settings_json;
         saveSettings.close();
     }
@@ -218,6 +226,9 @@ void FileBrowser::printDirectories() {
 
     box(dir_window, 0, 0);
     wrefresh(dir_window);
+    // Very important to refresh(), otherwise input appears delayed and program
+    // looks glitched while resize
+    refresh();
 }
 
 void FileBrowser::selectionDown() {
@@ -940,6 +951,8 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         case KEY_UP:
             selectionUp();
             break;
+        case KEY_F(1):
+            break;
         case 'q':
             is_running = false;
             break;
@@ -1000,22 +1013,29 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
     refresh();
 }
 
-void FileBrowser::handleResize() {
-    return;
-    if (resize_flag) {
+void FileBrowser::handleResize(bool force) {
+    if (resize_flag || force) {
         resize_flag = false;
-        int sizex = getmaxx(stdscr);
-        int sizey = getmaxy(stdscr);
-        resize_term(sizey, sizex);
+        int sizey, sizex;
+
+        endwin();  // required
+        refresh(); // required
+        clear();   // required
+
+        resize_term(LINES, COLS);
         getmaxyx(stdscr, sizey, sizex);
-        // !!! May be false positive, check
-        terminal_size_x = sizex;
-        terminal_size_y = sizey;
-        createWindow(main_window, sizey - bottom_height, sizex - menu_width, 1, menu_width);
-        createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
-        createWindow(cmd_window, 3, sizex - 5 - menu_width, sizey - bottom_height + 3, 20 + 5);
-        clear();
+
+        initAllWindows();
+        
+        box(main_window, 0, 0);
+        box(dir_window, 0, 0);
+        printDirectories();
+        refreshCMDWindow();
+        wrefresh(main_window);
+        wrefresh(dir_window);
+        wrefresh(cmd_window);
         refresh();
+
     }
 }
 

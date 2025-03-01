@@ -25,7 +25,7 @@ public:
     void printDirectories();
 
     void handleInputEvent(MEVENT& mouse, int key);
-    void handleResize();
+    void handleResize(bool force=false);
     void plotHistogram();
 
     bool isRunning() const;
@@ -66,6 +66,7 @@ private:
     void drawEssentials();
 
     // Window refreshing
+    void initAllWindows();
     void refreshCMDWindow();
     void helpWindow();
     void drawColorWindow();
@@ -88,6 +89,7 @@ private:
     int mainwin_y;
     int terminal_size_y;
     int terminal_size_x;
+
     int menu_width = 20;
     int bottom_height = 7;
 

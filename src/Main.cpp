@@ -1,4 +1,6 @@
 #include <clocale>
+#include <cstdlib>
+#include <fcntl.h>
 #include <iostream>
 #include <filesystem>
 #include <string>
@@ -41,6 +43,9 @@
 
 extern bool resize_flag;
 
+int resize_fd[2]; // PIPE
+
+
 int main (int argc, char* argv[]) {
     // Silence ROOT messages including errors
     gErrorIgnoreLevel = kFatal;
@@ -76,18 +81,37 @@ int main (int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    signal(SIGWINCH, [](int) { resize_flag = true; });
+    pipe(resize_fd);
+    fcntl(resize_fd[0], F_SETFL, O_NONBLOCK);
+    signal(SIGWINCH, [](int) { 
+        resize_flag = true; 
+        write(resize_fd[1], "R", 1); // Notify select
+    });
 
     MEVENT mouse_event;
 
     while (browser.isRunning()) {
         browser.printDirectories();
-        int input = getch();
+
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(fileno(stdin), &fds);
+        FD_SET(resize_fd[0], &fds);
         
-        if (resize_flag) {
+        // Wait for input or signal
+        select(resize_fd[0] + 1, &fds, NULL, NULL, NULL);
+
+        if (FD_ISSET(resize_fd[0], &fds)) {
+            char buf;
+            read(resize_fd[0], &buf, 1);
+            // Handle resize
             browser.handleResize();
         }
-        browser.handleInputEvent(mouse_event, input);
+        if (FD_ISSET(fileno(stdin), &fds)) {
+            int input = getch();
+            browser.handleInputEvent(mouse_event, input);
+        }
+
     }
 
     return EXIT_SUCCESS;

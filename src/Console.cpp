@@ -216,7 +216,7 @@ void Console::handleInput(int key) {
 }
 
 bool Console::validChar(int c) {
-    return isalnum(c) || allowed_chars.contains(c);
+    return c < 128 && (isalnum(c) || allowed_chars.contains(c));
 }
 
 void Console::cursorMove(int pos) {
