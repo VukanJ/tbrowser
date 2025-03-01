@@ -3,8 +3,6 @@
 #include <cmath>
 #include <ncurses.h>
 #include <stdexcept>
-#include <stack>
-#include <iostream>
 #include <algorithm>
 #include "definitions.h"
 

@@ -1,8 +1,6 @@
 #include "RootFile.h"
 #include "TKey.h"
 #include "definitions.h"
-#include <numeric>
-#include <iostream>
 
 RootFile::Node::Node() : type(NodeType::UNKNOWN), index(-1) { }
 

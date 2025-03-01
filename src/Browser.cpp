@@ -9,7 +9,6 @@
 #include <csignal>
 #include <algorithm>
 #include <string>
-#include <locale>
 #include <unistd.h>
 #include <unordered_map>
 
@@ -237,11 +236,12 @@ void FileBrowser::printDirectories() {
 
     box(dir_window, 0, 0);
     if (searchMode.isActive) {
-        wattron(dir_window, A_BOLD);
-        wattron(dir_window, A_REVERSE);
-        mvwprintw(dir_window, y-2, x, "SEARCH MODE");
-        wattroff(dir_window, A_REVERSE);
-        wattroff(dir_window, A_BOLD);
+        attron(A_BOLD);
+        attron(A_REVERSE);
+        mvprintw(y-1, x, "[SEARCH MODE]");
+        mvprintw(y + maxlines, x, "[EXIT WITH '/']");
+        attroff(A_REVERSE);
+        attroff(A_BOLD);
     }
 
     wrefresh(dir_window);
