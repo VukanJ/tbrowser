@@ -8,6 +8,7 @@
 #include <fstream>
 #include <csignal>
 #include <algorithm>
+#include <array>
 #include <string>
 #include <unistd.h>
 #include <unordered_map>
@@ -26,7 +27,7 @@
 #include "definitions.h"
 #include "nlohmann/json.hpp"
 
-auto make_superscript(int n) {
+static auto make_superscript(int n) {
 #if USE_UNICODE
     std::string sup;
     constexpr std::array<const char[4], 10> super { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
@@ -59,8 +60,8 @@ FileBrowser::FileBrowser() {
 }
 
 void FileBrowser::initAllWindows() {
-    int sizex = getmaxx(stdscr);
-    int sizey = getmaxy(stdscr);
+    const int sizex = getmaxx(stdscr);
+    const int sizey = getmaxy(stdscr);
     createWindow(main_window, sizey - bottom_height, sizex - menu_width - yaxis_spacing, 1, menu_width + yaxis_spacing);
     createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
     createWindow(cmd_window, 3, sizex - 25, sizey - bottom_height + 3, 20 + 5);
@@ -215,9 +216,11 @@ void FileBrowser::printDirectories() {
     };
 
     for (const auto& [name, node] : root_file.displayList) {
-        if (entry < 0) entry++;
+        if (entry < 0) {
+            entry++;
+        }
         else if (entry < maxlines) {
-            bool showCondition = node->openState & RootFile::Node::LISTED;
+            bool showCondition = (node->openState & RootFile::Node::LISTED) != 0;
             if (searchMode.isActive) {
                 showCondition = node->showInSearch;
             }
@@ -282,11 +285,11 @@ void FileBrowser::toggleLogy() {
     logscale = !logscale; 
 } 
 
-int FileBrowser::getBinsx() { 
+int FileBrowser::getBinsx() const { 
     return 2 * mainwin_x - 4; 
 }
 
-int FileBrowser::getBinsy() { 
+int FileBrowser::getBinsy() const { 
     return blockmode * mainwin_y - 2 * blockmode;
 }
 
@@ -352,8 +355,8 @@ bool FileBrowser::isRunning() const {
 
 void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     // Get window position and size
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
+    const int winx = getbegx(main_window);
+    const int winy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
@@ -398,7 +401,7 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
     refresh();
 
-    auto& [varexp, selection, option, nentries, firstentry] = args;
+    const auto& [varexp, selection, option, nentries, firstentry] = args;
 
     // Get selected tree
     TTree* ttree = getActiveTTree();
@@ -884,8 +887,6 @@ void FileBrowser::plotXAxis(const AxisTicks& ticks, bool force_range) {
 void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
     int winx = getbegx(main_window);
     int winy = getbegx(main_window);
-    int sizex = getbegx(main_window);
-    int sizey = getbegx(main_window);
     // Clear line below plot
     double ymin = 0;
     double ymax = 1;
@@ -907,8 +908,7 @@ void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
     }
     winx = getbegx(main_window);
     winy = getbegy(main_window);
-    sizex = getmaxx(main_window);
-    sizey = getmaxy(main_window);
+    int sizey = getmaxy(main_window);
 
     auto nBinsY = ticks.nticks;
     double rangeY = ymax - ymin;
@@ -973,17 +973,13 @@ bool FileBrowser::isClickInWindow(WINDOW*& win, int y, int x) {
     int sizey, sizex;
     getmaxyx(win, sizey, sizex);
     getbegyx(win, posy, posx);
-    if (x > posx && x < posx + sizex - 1 && y > posy && y < posy + sizey - 1) {
-        return true;
-    }
-
-    return false;
+    return x > posx && x < posx + sizex - 1 && y > posy && y < posy + sizey - 1;
 }
 
 void FileBrowser::handleMouseClick(int y, int x) {
     // Clicked inside window?
     if (isClickInWindow(dir_window, y, x)) {
-        int posy = getbegy(dir_window);
+        const int posy = getbegy(dir_window);
         selected_pos = y - posy - 1;
         handleMenuSelect();
     }
@@ -1134,12 +1130,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 void FileBrowser::updateSearchResults() {
     for (auto& [name, node] : root_file.displayList) {
         if (node->type == NodeType::TLEAF) {
-            if (string_contains(name, searchMode.input)) {
-                node->showInSearch = true;
-            }
-            else {
-                node->showInSearch = false;
-            }
+            node -> showInSearch = string_contains(name, searchMode.input);
         }
         else {
             node->showInSearch = false; // Make sure this is always hidden
@@ -1282,7 +1273,7 @@ void FileBrowser::helpWindow() {
     delwin(help);
 }
 
-void FileBrowser::ColorPickerWindow::render() {
+void FileBrowser::ColorPickerWindow::render() const {
     box(color_window, 0, 0);
     if (color_window == nullptr) throw;
 
@@ -1324,8 +1315,8 @@ FileBrowser::ColorPickerWindow::~ColorPickerWindow() {
 }
 
 TermColor FileBrowser::ColorPickerWindow::selectFromMouseClick(int y, int x) {
-    int begy  = getbegy(color_window);
-    int begx  = getbegx(color_window);
+    const int begy  = getbegy(color_window);
+    const int begx  = getbegx(color_window);
     y -= begy;
     x -= begx;
     auto sel = static_cast<TermColor>(col_start_palette + (y * 18) + x / 2);

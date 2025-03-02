@@ -75,8 +75,8 @@ private:
     void makeSpaceForYaxis(int s);
     Console console;
 
-    int getBinsx();
-    int getBinsy();
+    int getBinsx() const ;
+    int getBinsy() const ;
     void toggleBlockMode();
 
     JSON settings_json;
@@ -119,7 +119,7 @@ private:
         ~ColorPickerWindow();
 
         void init(); // Must be delayed
-        void render();
+        void render() const;
         TermColor selectFromMouseClick(int y, int x);
 
         bool show = false;
