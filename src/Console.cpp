@@ -259,7 +259,7 @@ void Console::handleInput(int key) {
                 entering_draw_command = false; 
                 break;
             case KEY_LEFT: // Move input cursor to the left
-                if (curs_offset < current_input.size()) {
+                if (curs_offset < static_cast<int>(current_input.size())) {
                     curs_offset++;
                 }
                 break;
@@ -269,7 +269,7 @@ void Console::handleInput(int key) {
                 }
                 break;
             case KEY_UP:
-                if (historyScrollback < command_history.size() - 1) {
+                if (historyScrollback < static_cast<int>(command_history.size())) {
                     historyScrollback++;
                     if (historyScrollback == 1) {
                         // Save current input
@@ -350,8 +350,19 @@ void Console::redraw(int posy, int posx) {
             attroff(COLOR_PAIR(col_yellow) | A_REVERSE);
         }
         else {
+            move(posy - 2, posx);
+            clrtoeol();
             mvprintw(posy-2, posx, "       ");
         }
+    }
+
+    if (historyScrollback > 0) {
+        mvprintw(posy-2, posx+10, "History [%i/%ld]", historyScrollback, command_history.size());
+        clrtoeol();
+    }
+    else {
+        move(posy-2, posx+10);
+        clrtoeol();
     }
 
     // Display input
@@ -406,6 +417,11 @@ void Console::loadCommandHistory(const std::string& historyFile) {
     }
     else {
         std::ofstream outfile(historyFileName);
+    }
+
+    if (command_history.size() > max_history_size) {
+        command_history.erase(command_history.begin(),
+                              command_history.begin() + command_history.size() - max_history_size);
     }
 }
 

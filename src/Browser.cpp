@@ -116,9 +116,9 @@ void FileBrowser::loadSettings() {
     // Make sure dotfile exists
     if (!fs::exists(dotpath / "settings.json")) {
         fs::create_directory(dotpath);
-        std::ofstream settings(dotpath / "settings.json", std::ios::out);
+        std::ofstream settings(dotpath / "settings.json");
         if (settings.is_open()) {
-            settings << R"({"blockmode":"2x2","statsbox":true})";
+            settings << R"({"blockmode":"2x2","statsbox":true,"menu_width":20})";
         }
         else {
             std::cerr << "Could not create user settings file" << std::endl;
@@ -128,13 +128,14 @@ void FileBrowser::loadSettings() {
     }
 
     // Load settings
-    std::ifstream settings(dotpath / "settings.json", std::ios::in);
+    std::ifstream settings(dotpath / "settings.json");
     if (settings.is_open()) {
         settings >> settings_json;
         if (settings_json.contains("blockmode")) {
             if (settings_json["blockmode"] == "2x2") {      blockmode = 2; }
             else if (settings_json["blockmode"] == "3x2") { blockmode = 3; }
             else if (settings_json["blockmode"] == "4x2") { blockmode = 4; }
+            else { blockmode = 2; };
         }
         if (settings_json.contains("statsbox")) {
             showstats = settings_json["statsbox"];
@@ -161,8 +162,8 @@ void FileBrowser::saveSettings() {
 }
 
 void FileBrowser::loadFile(std::string filename) {
-    mvprintw(2, 1, "Reading...");
-    refresh();
+    mvwprintw(dir_window, 1, 1, "Reading...");
+    wrefresh(dir_window);
 
     root_file.load(filename);
     console.setTabCompletionDict(root_file.displayList);
@@ -177,7 +178,7 @@ void FileBrowser::printDirectories() {
     if (searchMode.isActive) {
         attron(A_BOLD | A_ITALIC);
         mvprintw(0, 0, "/%s", searchMode.input.c_str());
-        attroff(A_ITALIC | A_BOLD);
+        attroff(A_BOLD | A_ITALIC);
         clrtoeol();
     }
 

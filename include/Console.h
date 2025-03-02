@@ -8,6 +8,8 @@
 #include <unordered_set>
 #include "RootFile.h"
 
+inline constexpr size_t max_history_size = 1000;
+
 class Console {
 public:
     Console();
