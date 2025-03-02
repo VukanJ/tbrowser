@@ -227,7 +227,7 @@ void FileBrowser::printDirectories() {
     box(dir_window, 0, 0);
     if (searchMode.isActive) {
         attron(A_BOLD | A_REVERSE);
-        mvprintw(y-1, x, "[SEARCH MODE]");
+        mvprintw(y - 1, x, "[SEARCH MODE]");
         mvprintw(y + maxlines, x, "[EXIT WITH '/']");
         attroff(A_BOLD | A_REVERSE);
     }
@@ -347,7 +347,7 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
-    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
+    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading %s...", leaf->GetName());
     refresh();
 
     const char* leafname = leaf->GetName();
@@ -364,14 +364,14 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     }
     AxisTicks xaxis(min, max);
 
-    TH1D hist("H", leafname, bins_x, min, max);
+    TH1D hist("H", leafname, bins_x, xaxis.minAdjusted(), xaxis.maxAdjusted());
 
     tree->Project("H", leafname);
 
     AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
     
     plotYAxis(yaxis, true);
-    plotXAxis(xaxis, true); // looks not right if false
+    plotXAxis(xaxis, false); // use minAdjusted as in histogram
     plotASCIIHistogram(&hist, bins_y, bins_x);
     plotCanvasAnnotations(&hist);
 
@@ -452,9 +452,11 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         }
 
         TH1D hist;
+        AxisTicks xaxis;
         if (!varexp.limits.empty()) {
             min = varexp.limits.at(0);
             max = varexp.limits.at(1);
+            xaxis = AxisTicks(min, max, 10);
             hist = TH1D("TEMP", title.c_str(), bins_x, min, max);
             for (int i = 0; i < n; ++i) {
                 if (data[i] >= min && data[i] <= max) {
@@ -464,7 +466,8 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             hist.Draw("goff");
         }
         else {
-            hist = TH1D("TEMP", title.c_str(), bins_x, min, max);
+            xaxis = AxisTicks(min, max, 10);
+            hist = TH1D("TEMP", title.c_str(), bins_x, xaxis.minAdjusted(), xaxis.maxAdjusted());
             hist.FillN(n, data, nullptr);
             hist.Draw("goff");
         }
@@ -474,11 +477,10 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             min--;
             max++;
         }
-        AxisTicks xaxis(min, max);
         AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
 
         plotYAxis(yaxis, true);
-        plotXAxis(xaxis, true);
+        plotXAxis(xaxis, !varexp.limits.empty());
         plotASCIIHistogram(&hist, bins_y, bins_x);
         plotCanvasAnnotations(&hist);
     }
@@ -884,6 +886,10 @@ void FileBrowser::plotYAxis(AxisTicks& ticks, bool force_range) {
  #endif
         mvprintw(winy - 1, winx, " %s ", magnitude.c_str());
         attroff(COLOR_PAIR(col_yellow));
+    }
+    else {
+        move(winy - 1, winx);
+        clrtoeol();
     }
 }
 

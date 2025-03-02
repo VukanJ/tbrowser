@@ -114,10 +114,6 @@ bool Console::parse() {
             tokens.back() += current_input[c];
         }
     }
-    for (int i = 0; auto t : tokens) {
-        mvprintw(40 + i, 40, "%i %s", i+1, t.c_str());
-        i++;
-    }
 
     // Parse entries, do basic checks
     auto ntokens = tokens.size();

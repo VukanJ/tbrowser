@@ -6,6 +6,7 @@
 
 class AxisTicks {
 public:
+    AxisTicks() = default;
     AxisTicks(double vmin, double vmax, int napprox=10, bool logarithmic=false);
 
     struct Tick {
