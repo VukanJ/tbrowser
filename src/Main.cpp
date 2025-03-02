@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    Console::FirstDrawArg fa("B0_M>>(100, 5000, 6000))");
+    AxisTicks at(3, 100223412, 4, true);
     
 #else
     if (argc == 2) {

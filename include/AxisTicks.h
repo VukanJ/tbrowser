@@ -6,7 +6,7 @@
 
 class AxisTicks {
 public:
-    AxisTicks(double vmin, double vmax, int napprox=10);
+    AxisTicks(double vmin, double vmax, int napprox=10, bool logarithmic=false);
 
     double tickPosition(int i) const;
     double min() const;
@@ -21,10 +21,14 @@ public:
     std::vector<long> values_i;
     std::vector<std::string> values_str;
     bool integer;
+    bool logarithmic = false;
     long E = 0; // Exponent
     int nticks = 1;
 
 private:
+    void init_linear(int napprox);
+    void init_logarithmic();
+
     // data minima and maxima
     double vmin;
     double vmax;

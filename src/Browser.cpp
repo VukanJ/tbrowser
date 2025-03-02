@@ -27,19 +27,6 @@
 #include "definitions.h"
 #include "nlohmann/json.hpp"
 
-static auto make_superscript(int n) {
-#if USE_UNICODE
-    std::string sup;
-    constexpr std::array<const char[4], 10> super { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
-    for (auto c : std::to_string(n)) {
-        sup += c == '-' ? ASCII_SUP_MINUS : super[c - '0'];
-    }
-    return sup;
-#else
-    return std::to_string(n);
-#endif
-}
-
 volatile bool resize_flag = false;
 
 FileBrowser::FileBrowser() {
@@ -381,7 +368,7 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     tree->Project("H", leafname);
 
     const AxisTicks xaxis(min, max);
-    const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5);
+    const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
 
     plotYAxis(yaxis, true);
     plotXAxis(xaxis, true); // looks not right if false
@@ -488,7 +475,7 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             max = min + 1;
         }
         const AxisTicks xaxis(min, max);
-        const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5);
+        const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
 
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, true);
@@ -609,7 +596,7 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
             maxy = miny + 1;
         }
         const AxisTicks xaxis(minx, maxx);
-        const AxisTicks yaxis(miny, maxy, 5);
+        const AxisTicks yaxis(miny, maxy, 5, logscale);
 
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, true);
@@ -634,7 +621,7 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
         pixel_y = max_height / binsy;
     }
     // Draw ASCII art
-    attron(COLOR_PAIR(col_whiteblue));
+    wattron(main_window, COLOR_PAIR(col_whiteblue));
     for (int x = 0; x < binsx / 2; x++) {
         auto cl = hist->GetBinContent(2 * x);
         auto cr = hist->GetBinContent(2 * x + 1);
@@ -644,7 +631,7 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
         }
 
         if (blockmode == 4) {
-            attron(A_BOLD);
+            wattron(main_window, A_BOLD);
             for (int y = 0; y < binsy / 4; ++y) {
                 // Check if ascii character is filled
                 std::uint8_t probe = BLOCKS_code_4x2::BC_VOID;
@@ -659,21 +646,21 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
                 if (probe == BLOCKS_code_4x2::BC_VOID) {
                     // fill rest with blanks, prevents overdraw...
                     for (int f = y; f < binsy / 4; ++f) {
-                        mvprintw(winy+mainwin_y-2-f, winx+1+x, " ");
+                        mvwprintw(main_window, mainwin_y-2-f, 1+x, " ");
                     }
                     break;
                 }
                 try {
                     auto print = ascii_4x2[ascii_map_4x2.at(static_cast<BLOCKS_code_4x2>(probe))];
-                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%s", print);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%s", print);
                 }
                 catch(...) {
-                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%i", probe);
-                    mvprintw(0, 0, "%i", probe);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%i", probe);
+                    mvwprintw(main_window, 0, 0, "%i", probe);
                     clrtoeol();
                 }
             }
-            attroff(A_BOLD);
+            wattroff(main_window, A_BOLD);
         }
         else if (blockmode == 3) {
             for (int y = 0; y < binsy / 3; ++y) {
@@ -688,17 +675,16 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
                 if (probe == BLOCKS_code_3x2::EC_VOID) {
                     // fill rest with blanks, prevents overdraw...
                     for (int f = y; f < binsy / 3; ++f) {
-                        mvprintw(winy+mainwin_y-2-f, winx+1+x, " ");
+                        mvwprintw(main_window, mainwin_y-2-f, 1+x, " ");
                     }
                     break;
                 }
                 try {
                     auto print = ascii_3x2[ascii_map_3x2.at(static_cast<BLOCKS_code_3x2>(probe))];
-                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%s", print);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%s", print);
                 }
                 catch(...) {
-                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%i", probe);
-                    mvprintw(0, 0, "%i", probe);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%i", probe);
                     clrtoeol();
                 }
             }
@@ -714,22 +700,23 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
                 if (probe == BLOCKS_code_2x2::C_VOID) {
                     // fill rest with blanks, prevents overdraw...
                     for (int f = y; f < binsy / 2; ++f) {
-                        mvprintw(winy+mainwin_y-2-f, winx+1+x, " ");
+                        mvwprintw(main_window,mainwin_y-2-f, 1+x, " ");
                     }
                     break;
                 }
                 try {
                     auto print = ascii_2x2[ascii_map_2x2.at(static_cast<BLOCKS_code_2x2>(probe))];
-                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%s", print);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%s", print);
                 }
                 catch(...) {
-                    mvprintw(winy+mainwin_y-2-y, winx+1+x, "%i", probe);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%i", probe);
                 }
             }
         }
 
     }
-    attroff(COLOR_PAIR(1));
+    wattroff(main_window, COLOR_PAIR(1));
+    wrefresh(main_window);
 }
 
 void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
@@ -886,7 +873,7 @@ void FileBrowser::plotXAxis(const AxisTicks& ticks, bool force_range) {
 
 void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
     int winx = getbegx(main_window);
-    int winy = getbegx(main_window);
+    int winy = getbegy(main_window);
     // Clear line below plot
     double ymin = 0;
     double ymax = 1;
@@ -901,11 +888,17 @@ void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
 
     // makeSpaceForYaxis
     int reserve_xwidth = ticks.maxLabelWidth() + 1;
-    makeSpaceForYaxis(reserve_xwidth);
-    for (int i =0; i < reserve_xwidth;++i) {
-        move(winy, winx + i);
-        clrtobot();
+    if (reserve_xwidth > yaxis_spacing) {
+        makeSpaceForYaxis(reserve_xwidth);
     }
+
+    // Prevent overdraw
+    for (int i = 0; i < mainwin_y; ++i) {
+        for (int j = 0; j < yaxis_spacing; ++j) {
+            mvaddch(winy + i, winx + j - yaxis_spacing, ' ');
+        }
+    }
+
     winx = getbegx(main_window);
     winy = getbegy(main_window);
     int sizey = getmaxy(main_window);
@@ -924,17 +917,36 @@ void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
         yaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
 
         attron(A_ITALIC | A_BOLD);
-        if (ticks.integer) {
-            // write centered numbers below
-            long tick = ticks.values_i[i];
-            int ticklen = ticks.values_str[i].size();
-            mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%ld", tick);
+        if (ticks.logarithmic) {
+            if (ticks.values_i[i] <= 2) {
+                auto tick = std::to_string(static_cast<int>(std::pow<int>(10, ticks.values_i[i])));
+                int ticklen = tick.size();
+                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", tick.c_str());
+            }
+            else {
+#if USE_UNICODE==1
+                auto tick = fmtstring("10{}", make_superscript(ticks.values_i[i]));
+                int ticklen = 2 + ticks.values_str[i].size();
+#else
+                auto tick = fmtstring("10^{}", make_superscript(ticks.values_i[i]));
+                int ticklen = tick.size();
+#endif
+                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", tick.c_str());
+            }
         }
         else {
-            // write centered numbers below
-            auto num = ticks.values_str[i];
-            int ticklen = num.size();
-            mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", num.c_str());
+            if (ticks.integer) {
+                // write centered numbers below
+                long tick = ticks.values_i[i];
+                int ticklen = ticks.values_str[i].size();
+                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%ld", tick);
+            }
+            else {
+                // write centered numbers below
+                auto num = ticks.values_str[i];
+                int ticklen = num.size();
+                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", num.c_str());
+            }
         }
         attroff(A_ITALIC | A_BOLD);
     }

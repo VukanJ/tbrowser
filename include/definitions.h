@@ -235,4 +235,18 @@ enum TermColor {
     #define SYMB_TUNKNOWN "?"
 #endif // USE_UNICODE
 
+static inline auto make_superscript(int n) {
+#if USE_UNICODE==1
+    std::string sup;
+    constexpr std::array<const char[4], 10> super { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+    for (auto c : std::to_string(n)) {
+        sup += c == '-' ? ASCII_SUP_MINUS : super[c - '0'];
+    }
+    return sup;
+#else
+    return std::to_string(n);
+#endif
+}
+
+
 #endif // DEFINITIONS_H

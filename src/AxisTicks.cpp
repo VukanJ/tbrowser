@@ -1,36 +1,72 @@
 #include "AxisTicks.h"
-#include "TAxis.h"
-#include "definitions.h"
+#include <iostream>
 #include <algorithm>
 #include <cmath>
-#include <ncurses.h>
 #include <cassert>
 
-AxisTicks::AxisTicks(double min, double max, int napprox) 
-    : vmin(min), vmax(max) {
-    // Compute range of histogram x axis
+#include <ncurses.h>
+#include "TAxis.h"
 
-    // mvprintw(18, 20, "xmin %f", vmin);
-    // mvprintw(19, 20, "xmax %f", vmax);
+#include "definitions.h"
+
+AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic) 
+    : vmin(min), vmax(max) 
+{
+    if (min > max) {
+        throw std::runtime_error("max > min is required");
+    }
+
+    if (logarithmic) {
+        init_logarithmic();
+    }
+    else {
+        init_linear(napprox);
+    }
+
+    assert(static_cast<int>(values_d.size()) == nticks);
+    assert(static_cast<int>(values_i.size()) == nticks);
+    assert(static_cast<int>(values_str.size()) == nticks);
+}
+
+void AxisTicks::init_logarithmic() {
+    logarithmic = true;
+    double minMag = floor(log10(std::max<double>(vmin, 0.5)));
+    double maxMag = ceil(log10(vmax));
+
+    if (minMag == maxMag) {
+        maxMag++;
+    }
+
+    vmin = log10(std::max<double>(vmin, 0.5));
+    vmax = log10(std::max<double>(vmax, 0.5));
+    vmin_adjust = minMag;
+    vmax_adjust = maxMag;
+
+    values_d.reserve(maxMag - minMag);
+    values_i.reserve(maxMag - minMag);
+    values_str.reserve(maxMag - minMag);
+    for (int mag = minMag; mag <= maxMag; ++mag) {
+        values_d.push_back(mag);
+        values_i.push_back(mag);
+        values_str.push_back(std::to_string(values_i.back()));
+    }
+
+    // Keep it simple
+    E = 0;
+    nticks = values_d.size();
+    integer = true;
+}
+
+void AxisTicks::init_linear(int napprox) {
     {
-        int nbins_approx = napprox;
-        double range = (vmax - vmin);
-        double rawStep = (vmax - vmin) / nbins_approx;
-        double mag = floor(log10(range / nbins_approx));
-        /* attron(COLOR_PAIR(white_on_blue)); */
-        // mvprintw(20, 20, "range %f", range);
-        // mvprintw(21, 20, "rawStep %f", rawStep);
-        // mvprintw(22, 20, "mag %f", mag);
+        double range = vmax - vmin;
+        double rawStep = range / napprox;
+        double mag = floor(log10(range / napprox));
 
         rawStep = round(rawStep / pow(10, mag)) * pow(10, mag);
-        // mvprintw(23, 20, "rawStep %f", rawStep);
         vmin_adjust = floor(vmin / rawStep) * rawStep;
         vmax_adjust = ceil(vmax / rawStep) * rawStep;
-        // mvprintw(24, 20, "xmin corrected %f", xmin);
-        // mvprintw(25, 20, "xmax corrected %f", xmax);
         nticks = round((vmax_adjust - vmin_adjust) / rawStep);
-        // mvprintw(26, 20, "nbins %i", nbins);
-        /* attron(COLOR_PAIR(white_on_blue)); */
     }
 
     TAxis xaxis;
@@ -107,10 +143,6 @@ AxisTicks::AxisTicks(double min, double max, int napprox)
             values_str.push_back(fmtstring("{:.7g}", v));
         }
     }
-
-    assert(static_cast<int>(values_d.size()) == nticks);
-    assert(static_cast<int>(values_i.size()) == nticks);
-    assert(static_cast<int>(values_str.size()) == nticks);
 }
 
 double AxisTicks::tickPosition(int i) const {
