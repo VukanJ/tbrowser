@@ -5,6 +5,7 @@
 #include <iostream>
 #include <filesystem>
 #include <string>
+#include <format>
 #include <csignal>
 
 #include <ncurses.h>
@@ -52,8 +53,14 @@ int main(int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    AxisTicks at(3, 100223412, 4, true);
-    
+    AxisTicks at(5150, 5450, 7);
+    at.setAxisPixels(100);
+    for (int t = 0; t < at.nticks; ++t) {
+        auto tick = at.getTick(t, true);
+        // std::cout << std::format("{} E={} d={} i={} s={}", t, at.E, at.values_d[t], at.values_i[t], at.values_str[t]) << std::endl;
+        std::cout << std::format("{} {} {}", t, tick.char_position, tick.tickstr) << std::endl;
+    }
+    return 0;
 #else
     if (argc == 2) {
         if (std::filesystem::exists(argv[1])) {

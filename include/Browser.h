@@ -58,8 +58,8 @@ private:
     void plotHistogram(TTree*, TLeaf*);
     void plotHistogram(const Console::DrawArgs&);
     void plot2DHistogram(const Console::DrawArgs&);
-    void plotXAxis(const AxisTicks&, bool force_range);
-    void plotYAxis(const AxisTicks&, bool force_range);
+    void plotXAxis(AxisTicks&, bool force_range);
+    void plotYAxis(AxisTicks&, bool force_range);
     void plotCanvasAnnotations(TH1* hist);
     void plotCanvasAnnotations(TH2* hist);
     void plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const;

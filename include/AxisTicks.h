@@ -8,6 +8,11 @@ class AxisTicks {
 public:
     AxisTicks(double vmin, double vmax, int napprox=10, bool logarithmic=false);
 
+    struct Tick {
+        int char_position = -999;
+        std::string tickstr;
+    };
+
     double tickPosition(int i) const;
     double min() const;
     double max() const;
@@ -16,10 +21,14 @@ public:
     double maxAdjusted() const;
 
     int maxLabelWidth() const;
+    void setAxisPixels(int);
+
+    Tick getTick(int i, bool adjusted_range) const;
 
     std::vector<double> values_d;
-    std::vector<long> values_i;
+    std::vector<long long> values_i;
     std::vector<std::string> values_str;
+
     bool integer;
     bool logarithmic = false;
     long E = 0; // Exponent
@@ -28,6 +37,8 @@ public:
 private:
     void init_linear(int napprox);
     void init_logarithmic();
+
+    int npixel = 0;
 
     // data minima and maxima
     double vmin;

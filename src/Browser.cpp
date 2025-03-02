@@ -359,17 +359,17 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     auto max = tree->GetMaximum(leafname);
     if (min == max) {
         // Handle single value histograms
-        min = min - 1;
-        max = min + 1;
+        min--;
+        max++;
     }
+    AxisTicks xaxis(min, max);
 
     TH1D hist("H", leafname, bins_x, min, max);
 
     tree->Project("H", leafname);
 
-    const AxisTicks xaxis(min, max);
-    const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
-
+    AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
+    
     plotYAxis(yaxis, true);
     plotXAxis(xaxis, true); // looks not right if false
     plotASCIIHistogram(&hist, bins_y, bins_x);
@@ -471,11 +471,11 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
 
         if (min == max) {
             // Handle single value histograms
-            min = min - 1;
-            max = min + 1;
+            min--;
+            max++;
         }
-        const AxisTicks xaxis(min, max);
-        const AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
+        AxisTicks xaxis(min, max);
+        AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
 
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, true);
@@ -595,8 +595,8 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
             miny = miny - 1;
             maxy = miny + 1;
         }
-        const AxisTicks xaxis(minx, maxx);
-        const AxisTicks yaxis(miny, maxy, 5, logscale);
+        AxisTicks xaxis(minx, maxx);
+        AxisTicks yaxis(miny, maxy, 5, logscale);
 
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, true);
@@ -611,8 +611,6 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
 }
 
 void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
     double max_height = hist->GetAt(hist->GetMaximumBin())*top_hist_clear;
     double pixel_y = max_height / binsy;
 
@@ -742,7 +740,7 @@ void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
 
 void FileBrowser::plotCanvasAnnotations(TH1* hist) {
     // Plot Title
-    box(main_window, 0, 0);
+    // box(main_window, 0, 0);
     wattron(main_window, A_ITALIC | A_BOLD);
     if (logscale) {
         mvwprintw(main_window, 0, 4, "┤ %s (log-y) ├", hist->GetTitle());
@@ -800,95 +798,58 @@ void FileBrowser::plotCanvasAnnotations(TH2* hist) {
     wrefresh(main_window);
 }
 
-void FileBrowser::plotXAxis(const AxisTicks& ticks, bool force_range) {
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
+void FileBrowser::plotXAxis(AxisTicks& ticks, bool force_range) {
     int sizex = getmaxx(main_window);
     int sizey = getmaxy(main_window);
-    // Clear line below plot
-    move(winy + sizey, 0);
-    clrtoeol();
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
 
-    double xmin = 0;
-    double xmax = 1;
-    if (force_range) {
-        xmin = ticks.min();
-        xmax = ticks.max();
-    }
-    else {
-        xmin = ticks.minAdjusted();
-        xmax = ticks.maxAdjusted();
-    }
-
-    auto nBinsX = ticks.nticks;
-    double rangeX = xmax - xmin;
+    move(sizey + 1, 0);
+    clrtobot();
 
     // Write numbers below axis at tick positions
-    auto nchars = sizex - 1;
-    std::vector<char> xaxis_chars(nchars, '-');
-    if (ticks.E != 0) { attron(COLOR_PAIR(col_yellow)); }
-    for (int i = 0; i < nBinsX; ++i) {
-        double tickPos = ticks.values_d[i] * std::pow(10.0, ticks.E);
-        int charpos = (tickPos - xmin) / rangeX * nchars;
-        if (charpos < 0) continue;
-        xaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
+    auto nchars = sizex - 2;
+    ticks.setAxisPixels(nchars);
 
+    std::vector<int> written_positions;
+    for (int i = 0; i < ticks.nticks; ++i) {
+        auto tick = ticks.getTick(i, !force_range);
+        written_positions.push_back(tick.char_position);
+        mvprintw(winy + sizey - 1, winx + 1 + tick.char_position, "┼");
+
+        if (ticks.E != 0) { attron(COLOR_PAIR(col_yellow)); }
         attron(A_ITALIC | A_BOLD);
-        if (ticks.integer) {
-            // write centered numbers below
-            long tick = ticks.values_i[i];
-            int ticklen = ticks.values_str[i].size();
-            mvprintw(winy + sizey, winx + 1 + charpos - ticklen / 2, "%ld", tick);
-        }
-        else {
-            // write centered numbers below
-            auto num = ticks.values_str[i];
-            int ticklen = num.size();
-            mvprintw(winy + sizey, winx + 1 + charpos - ticklen / 2, "%s", num.c_str());
-        }
-        attroff(A_BOLD | A_ITALIC);
+        mvprintw(winy + sizey, winx + 1 + tick.char_position - tick.tickstr.size() / 2, "%s", tick.tickstr.c_str());
+        attroff(A_ITALIC | A_BOLD);
+        if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
     }
-    if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
-    
-    // Draw the tick lines
-    for (int i = 0; char c : xaxis_chars) {
-        mvprintw(winy + sizey - 1, winx + 1 + i++, c == '+' ? "┼" : "─"); 
+    for (int i = 0; i < nchars; ++i) {
+        if (std::find(written_positions.begin(), written_positions.end(), i) == written_positions.end()) {
+            mvprintw(winy + sizey - 1, winx + 1 + i, "─");
+        }
     }
-    mvprintw(winy + sizey - 1, winx + nchars, "┘");
 
     // Print exponent if needed
     if (ticks.E != 0) {
         attron(COLOR_PAIR(col_yellow));
-#if USE_UNICODE
+ #if USE_UNICODE==1
         std::string magnitude = fmtstring("x10{}", make_superscript(ticks.E));
-#else
+ #else
         std::string magnitude = fmtstring("x10^{}", make_superscript(ticks.E));
-#endif
-        mvprintw(winy+sizey-1, winx+sizex-magnitude.size()-2, " %s ", magnitude.c_str());
+ #endif
+        mvprintw(winy + sizey-1, winx + sizex - magnitude.size() - 2, " %s ", magnitude.c_str());
         attroff(COLOR_PAIR(col_yellow));
     }
 }
 
-void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
-    // Clear line below plot
-    double ymin = 0;
-    double ymax = 1;
-    if (force_range) {
-        ymin = ticks.min();
-        ymax = ticks.max();
-    }
-    else {
-        ymin = ticks.minAdjusted();
-        ymax = ticks.maxAdjusted();
-    }
-
-    // makeSpaceForYaxis
+void FileBrowser::plotYAxis(AxisTicks& ticks, bool force_range) {
     int reserve_xwidth = ticks.maxLabelWidth() + 1;
     if (reserve_xwidth > yaxis_spacing) {
         makeSpaceForYaxis(reserve_xwidth);
     }
+    int winx = getbegx(main_window);
+    int winy = getbegy(main_window);
+    int sizey = getmaxy(main_window);
 
     // Prevent overdraw
     for (int i = 0; i < mainwin_y; ++i) {
@@ -897,73 +858,31 @@ void FileBrowser::plotYAxis(const AxisTicks& ticks, bool force_range) {
         }
     }
 
-    winx = getbegx(main_window);
-    winy = getbegy(main_window);
-    int sizey = getmaxy(main_window);
-
-    auto nBinsY = ticks.nticks;
-    double rangeY = ymax - ymin;
-
     // Write numbers below axis at tick positions
-    auto nchars = sizey - 1;
-    std::vector<char> yaxis_chars(nchars, '|');
-    if (ticks.E != 0) { attron(COLOR_PAIR(col_yellow)); }
-    for (int i = 0; i < nBinsY; ++i) {
-        double tickPos = ticks.tickPosition(i);
-        int charpos = (tickPos - ymin) / rangeY * nchars;
-        if (charpos < 0) continue;
-        yaxis_chars[std::min<int>(charpos, nchars - 1)] = '+';
+    auto nchars = sizey - 2;
+    ticks.setAxisPixels(nchars);
 
+    std::vector<int> written_positions;
+    for (int i = 0; i < ticks.nticks; ++i) {
+        auto tick = ticks.getTick(i, !force_range);
+        written_positions.push_back(tick.char_position);
+        mvprintw(winy + sizey - 1 - tick.char_position, winx, "┼");
+ 
+        if (ticks.E != 0) { attron(COLOR_PAIR(col_yellow)); }
         attron(A_ITALIC | A_BOLD);
-        if (ticks.logarithmic) {
-            if (ticks.values_i[i] <= 2) {
-                auto tick = std::to_string(static_cast<int>(std::pow<int>(10, ticks.values_i[i])));
-                int ticklen = tick.size();
-                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", tick.c_str());
-            }
-            else {
-#if USE_UNICODE==1
-                auto tick = fmtstring("10{}", make_superscript(ticks.values_i[i]));
-                int ticklen = 2 + ticks.values_str[i].size();
-#else
-                auto tick = fmtstring("10^{}", make_superscript(ticks.values_i[i]));
-                int ticklen = tick.size();
-#endif
-                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", tick.c_str());
-            }
-        }
-        else {
-            if (ticks.integer) {
-                // write centered numbers below
-                long tick = ticks.values_i[i];
-                int ticklen = ticks.values_str[i].size();
-                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%ld", tick);
-            }
-            else {
-                // write centered numbers below
-                auto num = ticks.values_str[i];
-                int ticklen = num.size();
-                mvprintw(winy + sizey - charpos - 1, winx - ticklen, "%s", num.c_str());
-            }
-        }
+        mvprintw(winy + sizey - 1 - tick.char_position, winx - tick.tickstr.size(), "%s", tick.tickstr.c_str());
         attroff(A_ITALIC | A_BOLD);
+        if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
     }
-    if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
-    
-    // Draw the tick lines
-    for (int i = 0; char c : yaxis_chars) {
-        mvprintw(winy + sizey - 1 - i++, winx, c == '+' ? "┼" : "│"); 
-    }
-
     // Print exponent if needed
     if (ticks.E != 0) {
         attron(COLOR_PAIR(col_yellow));
-#if USE_UNICODE
+ #if USE_UNICODE==1
         std::string magnitude = fmtstring("x10{}", make_superscript(ticks.E));
-#else
+ #else
         std::string magnitude = fmtstring("x10^{}", make_superscript(ticks.E));
-#endif
-        mvprintw(winy - 1, winx - 1, " %s ", magnitude.c_str());
+ #endif
+        mvprintw(winy - 1, winx, " %s ", magnitude.c_str());
         attroff(COLOR_PAIR(col_yellow));
     }
 }

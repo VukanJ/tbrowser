@@ -12,7 +12,10 @@
 AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic) 
     : vmin(min), vmax(max) 
 {
-    if (min > max) {
+    // vmin and vmax are lower and upper bounds of the plot data
+    // vmin_adjust and vmax_adjust are the adjusted bounds
+
+    if (min >= max) {
         throw std::runtime_error("max > min is required");
     }
 
@@ -26,6 +29,10 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
     assert(static_cast<int>(values_d.size()) == nticks);
     assert(static_cast<int>(values_i.size()) == nticks);
     assert(static_cast<int>(values_str.size()) == nticks);
+    assert(vmax > vmin);
+    assert(vmax_adjust > vmin_adjust);
+
+    
 }
 
 void AxisTicks::init_logarithmic() {
@@ -37,8 +44,6 @@ void AxisTicks::init_logarithmic() {
         maxMag++;
     }
 
-    vmin = log10(std::max<double>(vmin, 0.5));
-    vmax = log10(std::max<double>(vmax, 0.5));
     vmin_adjust = minMag;
     vmax_adjust = maxMag;
 
@@ -172,4 +177,27 @@ int AxisTicks::maxLabelWidth() const {
         return maxlabel->size();
     }
     return 0;
+}
+
+void AxisTicks::setAxisPixels(int npix) {
+    npixel = npix;
+}
+
+AxisTicks::Tick AxisTicks::getTick(int i, bool adjusted_range) const {
+    if (i < 0 || i >= nticks) return {};
+    
+    Tick tick;
+    if (adjusted_range) {
+        tick.char_position = (values_d[i] * std::pow(10.0, E) - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
+    }
+    else {
+        tick.char_position = (values_d[i] * std::pow(10.0, E) - vmin) / (vmax - vmin) * npixel;
+    }
+    if (tick.char_position < 0 || tick.char_position >= npixel) {
+        tick.char_position = -999; // Just to be sure
+    }
+
+    tick.tickstr = values_str[i];
+
+    return tick;
 }
