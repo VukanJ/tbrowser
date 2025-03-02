@@ -308,9 +308,9 @@ TTree* FileBrowser::getActiveTTree() {
         if (root_file.m_trees.size() == 1) {
             return root_file.m_trees[0];
         }
+        console.setError("No TTree found in file!");
     }
 
-    console.setError("No TTree found in file!");
     return ttree;
 }
 
@@ -722,10 +722,8 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
 void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
     double max_height = hist->GetAt(hist->GetMaximumBin());
 
-    //clear();
-    //refresh();
-    //wclear(main_window);
-    //wrefresh(main_window);
+    wclear(main_window);
+    wrefresh(main_window);
 
     // Draw ASCII art
     for (int x = 0; x < binsx + 1; x++) {
