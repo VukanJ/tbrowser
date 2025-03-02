@@ -11,6 +11,7 @@
 class Console {
 public:
     Console();
+    ~Console();
 
     struct FirstDrawArg {
         FirstDrawArg(std::string ex);
@@ -37,6 +38,7 @@ public:
 
     bool hasCommand();
     void clearCommand();
+    void loadCommandHistory(const std::string& historyFile);
     void setError(const char* str);
 
     bool entering_draw_command = false; // In focus
@@ -47,12 +49,17 @@ public:
 private:
     void tabComplete();
 
+    std::string historyFileName;
     bool has_command = false;
     std::string last_error;
-    int curs_offset = 0;
     std::unordered_set<char> allowed_chars;
-    std::vector<std::string> command_buffer;
+    std::vector<std::string> command_history;
     std::vector<std::string> branch_names;
+    int curs_offset = 0;
+    int nCommandsParsed = 0;
+
+    std::string current_input_stash;
+    int historyScrollback = 0;
 };
 
 #endif // !CONSOLE_H

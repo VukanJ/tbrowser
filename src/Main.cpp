@@ -32,7 +32,7 @@
 // - [x] Make log toggle command dependent
 // - [x] Help window <?>
 // - [x] Console delete fix
-// - [ ] Console history
+// - [x] Console history
 // - [ ] Log y axis ticks
 // - [ ] Console horizontal scroll 
 // - [x] Search
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 
     // Make pipe
     if (pipe(resize_fd) == -1) {
-        perror("ERROR");
+        perror("pipe error");
         return EXIT_FAILURE;
     }
     fcntl(resize_fd[0], F_SETFL, O_NONBLOCK);

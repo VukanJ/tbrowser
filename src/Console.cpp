@@ -1,6 +1,9 @@
 #include "Console.h"
 #include "TVirtualTreePlayer.h"
 #include <cmath>
+#include <fstream>
+#include <iostream>
+#include <filesystem>
 #include <ncurses.h>
 #include <stdexcept>
 #include <algorithm>
@@ -9,6 +12,18 @@
 Console::Console() {
     std::string chars = " \",._<>()[]=!&|?+-*/%:@$";
     for (char c : chars) allowed_chars.insert(c);
+}
+
+Console::~Console() {
+    // Append commands to history file
+    if (!historyFileName.empty() && nCommandsParsed > 0) {
+        std::ofstream histFile(historyFileName, std::ios::app);
+        for (std::size_t icmd = command_history.size() - nCommandsParsed; icmd < command_history.size(); ++icmd) 
+        {
+            histFile << command_history.at(icmd) + '\n';
+        }
+        histFile.close();
+    }
 }
 
 Console::FirstDrawArg::FirstDrawArg(std::string ex) {
@@ -79,7 +94,7 @@ bool Console::parse() {
     int offset = 0;
     if (string_contains(current_input, ">>(")) {
         // User is specifying histogram
-        // "var1>>(100, 10, 100, 1000, 0, 1)" can be the first token
+        // "var1>>(10, 100, 0, 1)" can be the first token
         auto start_hist_spec = current_input.find(">>(");
         auto end_hist_spec = current_input.find(")", start_hist_spec);
         if (end_hist_spec == current_input.npos) {
@@ -157,6 +172,18 @@ bool Console::parse() {
     }
 
     has_command = valid;
+
+    if (has_command) {
+        if (command_history.empty()) {
+            nCommandsParsed++;
+            command_history.push_back(current_input);
+        }
+        else if (command_history.back() != current_input) {
+            // Only save new commands
+            nCommandsParsed++;
+            command_history.push_back(current_input);
+        }
+    }
 
     return valid;
 }
@@ -239,6 +266,28 @@ void Console::handleInput(int key) {
             case KEY_RIGHT: // Move input cursor to the right
                 if (curs_offset > 0) {
                     curs_offset--;
+                }
+                break;
+            case KEY_UP:
+                if (historyScrollback < command_history.size() - 1) {
+                    historyScrollback++;
+                    if (historyScrollback == 1) {
+                        // Save current input
+                        current_input_stash = current_input;
+                    }
+                    current_input = command_history[command_history.size() - historyScrollback];
+                }
+                break;
+            case KEY_DOWN:
+                if (historyScrollback > 0) {
+                    historyScrollback--;
+                    if (historyScrollback == 0) {
+                        // Pop from command stash
+                        current_input = current_input_stash;
+                    }
+                    else {
+                        current_input = command_history[command_history.size() - historyScrollback];
+                    }
                 }
                 break;
             case KEY_BACKSPACE: case KEY_DC:
@@ -338,6 +387,26 @@ bool Console::hasCommand() {
 
 void Console::clearCommand() {
     has_command = false;
+}
+
+void Console::loadCommandHistory(const std::string& historyFile) {
+    historyFileName = historyFile;
+    command_history.clear();
+    if (std::filesystem::exists(historyFileName)) {
+        std::ifstream histFile(historyFileName.c_str());
+        if (histFile.is_open()) {
+            std::string line;
+            while (std::getline(histFile, line)) {
+                if (!line.empty()) {
+                    command_history.push_back(line);
+                }
+            }
+            histFile.close();
+        }
+    }
+    else {
+        std::ofstream outfile(historyFileName);
+    }
 }
 
 void Console::setError(const char* error) {

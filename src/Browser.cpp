@@ -45,6 +45,7 @@ FileBrowser::FileBrowser() {
     initNcurses();
     colorWindow.init();
     loadSettings();
+    console.loadCommandHistory(dotpath / "tbhistory");
     initAllWindows();
 
     refresh();
