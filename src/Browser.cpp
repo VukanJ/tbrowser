@@ -738,14 +738,14 @@ void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
     //wrefresh(main_window);
 
     // Draw ASCII art
-    for (int x = 0; x < binsx; x++) {
-        for (int y = 0; y < binsy; y++) {
+    for (int x = 0; x < binsx + 1; x++) {
+        for (int y = 0; y < binsy + 1; y++) {
             auto Z = hist->GetBinContent(x, y);
             if (Z == 0) continue;
             auto pixel_color = std::lerp(col_grayscale_start, col_grayscale_end + 1, Z / max_height);
             pixel_color = std::clamp<int>(pixel_color, col_grayscale_start, col_grayscale_end - 1);
             wattron(main_window, COLOR_PAIR(pixel_color));
-            mvwprintw(main_window, binsy - y, x, "█");
+            mvwprintw(main_window, binsy + 1 - y, x, "█");
             wattroff(main_window, COLOR_PAIR(pixel_color));
         }
     }
@@ -754,66 +754,62 @@ void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
 
 void FileBrowser::plotCanvasAnnotations(TH1* hist) {
     // Plot Title
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
     box(main_window, 0, 0);
-    wrefresh(main_window);
-    attron(A_ITALIC | A_BOLD);
+    wattron(main_window, A_ITALIC | A_BOLD);
     if (logscale) {
-        mvprintw(1, winx+4, "┤ %s (log-y) ├", hist->GetTitle());
+        mvwprintw(main_window, 0, 4, "┤ %s (log-y) ├", hist->GetTitle());
     }
     else {
-        mvprintw(1, winx+4, "┤ %s ├", hist->GetTitle());
+        mvwprintw(main_window, 0, 4, "┤ %s ├", hist->GetTitle());
     }
-    attroff(A_ITALIC | A_BOLD);
+    wattroff(main_window, A_ITALIC | A_BOLD);
 
     // Plot stats
     int line = 1;
     if (showstats) {
-        mvprintw(winy + line++, winx + mainwin_x - 30, "Entries: %f",   hist->GetEntries());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "Mean:    %.5f", hist->GetMean());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "Std:     %.5f", hist->GetStdDev());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "Bins:    %i",   hist->GetNbinsX());
+        mvwprintw(main_window, line++, mainwin_x - 30, "Entries: %f",   hist->GetEntries());
+        mvwprintw(main_window, line++, mainwin_x - 30, "Mean:    %.5f", hist->GetMean());
+        mvwprintw(main_window, line++, mainwin_x - 30, "Std:     %.5f", hist->GetStdDev());
+        mvwprintw(main_window, line++, mainwin_x - 30, "Bins:    %i",   hist->GetNbinsX());
     }
 
     if (hist->GetEntries() == 0) {
-        attron(A_BOLD);
-        mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 3, "Empty");
-        attroff(A_BOLD);
+        wattron(main_window, A_BOLD);
+        mvwprintw(main_window, mainwin_y / 2, mainwin_x / 2 - 3, "Empty");
+        wattroff(main_window, A_BOLD);
     }
+    wrefresh(main_window);
 }
 
 void FileBrowser::plotCanvasAnnotations(TH2* hist) {
     // Plot Title
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
     box(main_window, 0, 0);
-    wrefresh(main_window);
-    attron(A_ITALIC | A_BOLD);
+    wattron(main_window, A_ITALIC | A_BOLD);
     if (logscale) {
-        mvprintw(1, winx+2, "┤ %s (log-y) ├", hist->GetTitle());
+        mvwprintw(main_window, 0, 4, "┤ %s (log-y) ├", hist->GetTitle());
     }
     else {
-        mvprintw(1, winx+2, "┤ %s ├", hist->GetTitle());
+        mvwprintw(main_window, 0, 4, "┤ %s ├", hist->GetTitle());
     }
-    attroff(A_ITALIC | A_BOLD);
+    wattroff(main_window, A_ITALIC | A_BOLD);
 
     // Plot stats
     int line = 1;
     if (showstats) {
-        mvprintw(winy + line++, winx + mainwin_x - 30, "Entries: %f",   hist->GetEntries());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "Mean:    %.5f", hist->GetMean());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "Std:     %.5f", hist->GetStdDev());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "x Bins:  %i",   hist->GetNbinsX());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "y Bins:  %i",   hist->GetNbinsY());
-        mvprintw(winy + line++, winx + mainwin_x - 30, "corr:    %f",   hist->GetCorrelationFactor());
+        mvwprintw(main_window, line++, mainwin_x - 30, "Entries: %f",   hist->GetEntries());
+        mvwprintw(main_window, line++, mainwin_x - 30, "Mean:    %.5f", hist->GetMean());
+        mvwprintw(main_window, line++, mainwin_x - 30, "Std:     %.5f", hist->GetStdDev());
+        mvwprintw(main_window, line++, mainwin_x - 30, "x Bins:  %i",   hist->GetNbinsX());
+        mvwprintw(main_window, line++, mainwin_x - 30, "y Bins:  %i",   hist->GetNbinsY());
+        mvwprintw(main_window, line++, mainwin_x - 30, "corr:    %f",   hist->GetCorrelationFactor());
     }
 
     if (hist->GetEntries() == 0) {
-        attron(A_BOLD);
-        mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 3, "Empty");
-        attroff(A_BOLD);
+        wattron(main_window, A_BOLD);
+        mvwprintw(main_window, mainwin_y / 2, mainwin_x / 2 - 3, "Empty");
+        wattroff(main_window, A_BOLD);
     }
+    wrefresh(main_window);
 }
 
 void FileBrowser::plotXAxis(const AxisTicks& ticks, bool force_range) {
