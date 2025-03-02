@@ -5,6 +5,7 @@
 #include <cassert>
 
 #include <ncurses.h>
+#include <string>
 #include "TAxis.h"
 
 #include "definitions.h"
@@ -31,8 +32,6 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
     assert(static_cast<int>(values_str.size()) == nticks);
     assert(vmax > vmin);
     assert(vmax_adjust > vmin_adjust);
-
-    
 }
 
 void AxisTicks::init_logarithmic() {
@@ -44,6 +43,8 @@ void AxisTicks::init_logarithmic() {
         maxMag++;
     }
 
+    vmin = log10(std::max<double>(vmin, 0.5));
+    vmax = log10(std::max<double>(vmax, 0.5));
     vmin_adjust = minMag;
     vmax_adjust = maxMag;
 
@@ -187,17 +188,42 @@ AxisTicks::Tick AxisTicks::getTick(int i, bool adjusted_range) const {
     if (i < 0 || i >= nticks) return {};
     
     Tick tick;
-    if (adjusted_range) {
-        tick.char_position = (values_d[i] * std::pow(10.0, E) - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
+    if (logarithmic) {
+        if (adjusted_range) {
+            tick.char_position = (values_i[i] - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
+        }
+        else {
+            tick.char_position = (values_i[i] - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
+        }
     }
     else {
-        tick.char_position = (values_d[i] * std::pow(10.0, E) - vmin) / (vmax - vmin) * npixel;
+        if (adjusted_range) {
+            tick.char_position = (values_d[i] * std::pow(10.0, E) - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
+        }
+        else {
+            tick.char_position = (values_d[i] * std::pow(10.0, E) - vmin) / (vmax - vmin) * npixel;
+        }
     }
+
+
     if (tick.char_position < 0 || tick.char_position >= npixel) {
         tick.char_position = -999; // Just to be sure
     }
 
-    tick.tickstr = values_str[i];
+    if (logarithmic) {
+        if (values_i[i] <= 2) {
+            tick.tickstr = std::to_string(static_cast<int>(std::pow<int>(10, values_i[i])));
+            tick.tickstr_length = tick.tickstr.size();
+        }
+        else {
+            tick.tickstr = fmtstring("10{}", make_superscript(values_i[i]));
+            tick.tickstr_length = 2 + values_str[i].size();
+        }
+    }
+    else {
+        tick.tickstr = values_str[i];
+        tick.tickstr_length = tick.tickstr.size();
+    }
 
     return tick;
 }

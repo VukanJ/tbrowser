@@ -872,7 +872,7 @@ void FileBrowser::plotYAxis(AxisTicks& ticks, bool force_range) {
  
         if (ticks.E != 0) { attron(COLOR_PAIR(col_yellow)); }
         attron(A_ITALIC | A_BOLD);
-        mvprintw(winy + sizey - 1 - tick.char_position, winx - tick.tickstr.size(), "%s", tick.tickstr.c_str());
+        mvprintw(winy + sizey - 1 - tick.char_position, winx - tick.tickstr_length, "%s", tick.tickstr.c_str());
         attroff(A_ITALIC | A_BOLD);
         if (ticks.E != 0) { attroff(COLOR_PAIR(col_yellow)); }
     }

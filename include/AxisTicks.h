@@ -12,6 +12,7 @@ public:
     struct Tick {
         int char_position = -999;
         std::string tickstr;
+        int tickstr_length; // Needed because of unicode
     };
 
     double tickPosition(int i) const;

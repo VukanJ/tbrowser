@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    AxisTicks at(5150, 5450, 7);
+    AxisTicks at(4, 2308573498, 7, true);
     at.setAxisPixels(100);
     for (int t = 0; t < at.nticks; ++t) {
         auto tick = at.getTick(t, true);
