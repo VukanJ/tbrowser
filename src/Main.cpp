@@ -62,6 +62,10 @@ int main(int argc, char* argv[]) {
     }
     return 0;
 #else
+    if (argc == 1) {
+        std::cout << "Usage: tbrowser <file.root>" << std::endl;
+        return EXIT_SUCCESS;
+    }
     if (argc == 2) {
         if (std::filesystem::exists(argv[1])) {
             filename = argv[1];
