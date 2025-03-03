@@ -5,7 +5,6 @@
 #include <iostream>
 #include <filesystem>
 #include <string>
-#include <format>
 #include <csignal>
 
 #include <ncurses.h>
