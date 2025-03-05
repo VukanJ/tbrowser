@@ -16,8 +16,12 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
     // vmin and vmax are lower and upper bounds of the plot data
     // vmin_adjust and vmax_adjust are the adjusted bounds
 
-    if (min >= max) {
-        throw std::runtime_error("max > min is required");
+    if (min > max) {
+        throw std::runtime_error(fmtstring("max > min is required, got {} {}", min, max));
+    }
+    else if (min == max) {
+        min--;
+        max++;
     }
 
     if (logarithmic) {

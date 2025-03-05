@@ -357,11 +357,6 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     auto bins_y = getBinsy();
     auto min = tree->GetMinimum(leafname);
     auto max = tree->GetMaximum(leafname);
-    if (min == max) {
-        // Handle single value histograms
-        min--;
-        max++;
-    }
     AxisTicks xaxis(min, max);
 
     TH1D hist("H", leafname, bins_x, xaxis.minAdjusted(), xaxis.maxAdjusted());
@@ -472,11 +467,6 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
             hist.Draw("goff");
         }
 
-        if (min == max) {
-            // Handle single value histograms
-            min--;
-            max++;
-        }
         AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
 
         plotYAxis(yaxis, true);
@@ -587,16 +577,6 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
             hist2d.Draw("goff");
         }
 
-        if (minx == maxx) {
-            // Handle single value histograms
-            minx = minx - 1;
-            maxx = minx + 1;
-        }
-        if (miny == maxy) {
-            // Handle single value histograms
-            miny = miny - 1;
-            maxy = miny + 1;
-        }
         AxisTicks xaxis(minx, maxx);
         AxisTicks yaxis(miny, maxy, 5, logscale);
 
