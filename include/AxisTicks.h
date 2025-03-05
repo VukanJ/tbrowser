@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <limits>
 
 class AxisTicks {
 public:
@@ -37,6 +38,8 @@ public:
     int nticks = 1;
 
 private:
+    constexpr static int plus_intfinity = std::numeric_limits<int>::max();
+    constexpr static int minus_intfinity = std::numeric_limits<int>::min();
     void init_linear(int napprox);
     void init_logarithmic();
 

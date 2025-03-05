@@ -52,7 +52,7 @@ void AxisTicks::init_logarithmic() {
     vmin_adjust = minMag;
     vmax_adjust = maxMag;
 
-    double span = maxMag - minMag;
+    int span = maxMag - minMag;
     if (span <= 0) {
         maxMag++;
         span = 1;
@@ -108,7 +108,7 @@ void AxisTicks::init_linear(int napprox) {
 
     if (integer) {
         // Compute axis exponent
-        int minNumZero = 10000;
+        int minNumZero = plus_intfinity;
         for (auto v : values_i) {
             int n0 = count_0(v);
             if (v != 0 && n0 < minNumZero) {
@@ -130,7 +130,7 @@ void AxisTicks::init_linear(int napprox) {
         }
     }
     else {
-        E = -1000;
+        E = minus_intfinity;
         for (auto v : values_d) {
             auto mag = trunc(log10(std::abs(v)));
             if (mag > E) {
@@ -145,6 +145,11 @@ void AxisTicks::init_linear(int napprox) {
         else {
             E = 0;
         }
+    }
+
+    // Catch uninitialized exponent just in case
+    if (E == plus_intfinity || E == minus_intfinity) {
+        E = 0;
     }
 
     values_str.reserve(values_d.size());
