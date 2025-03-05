@@ -52,9 +52,14 @@ void AxisTicks::init_logarithmic() {
     vmin_adjust = minMag;
     vmax_adjust = maxMag;
 
-    values_d.reserve(maxMag - minMag);
-    values_i.reserve(maxMag - minMag);
-    values_str.reserve(maxMag - minMag);
+    double span = maxMag - minMag;
+    if (span <= 0) {
+        maxMag++;
+        span = 1;
+    }
+    values_d.reserve(span);
+    values_i.reserve(span);
+    values_str.reserve(span);
     for (int mag = minMag; mag <= maxMag; ++mag) {
         values_d.push_back(mag);
         values_i.push_back(mag);
