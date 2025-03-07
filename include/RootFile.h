@@ -51,7 +51,7 @@ public:
     std::string toString(Node*);
     
     // Return number of elements to be displayed in gui
-    int menuLength(bool searchMode=false);
+    int menuLength(bool searchMode);
 
     // Object address storage
     std::vector<TDirectory*> m_directories;

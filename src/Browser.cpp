@@ -52,7 +52,7 @@ void FileBrowser::initAllWindows() {
     createWindow(main_window, sizey - bottom_height, sizex - menu_width - yaxis_spacing, 1, menu_width + yaxis_spacing);
     createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
     createWindow(cmd_window, 3, sizex - 25, sizey - bottom_height + 3, 20 + 5);
-    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
+    object_menu.setMenuExtent(root_file.menuLength(false), getmaxy(dir_window) - 2);
 }
 
 FileBrowser::~FileBrowser() {
@@ -156,20 +156,25 @@ void FileBrowser::loadFile(std::string filename) {
 
     root_file.load(filename);
     console.setTabCompletionDict(root_file.displayList);
-    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
+    object_menu.setMenuExtent(root_file.menuLength(false), getmaxy(dir_window) - 2);
 }
 
 void FileBrowser::printDirectories() {
     if (skipDraw) { skipDraw = false; return; }
     int x = getbegx(dir_window) + 1;
     int y = getbegy(dir_window) + 1;
-    int maxlines = getmaxy(dir_window) - 2;
+    int maxlines = object_menu.getMenuLines();
 
     if (searchMode.isActive) {
         attron(A_BOLD | A_ITALIC);
         mvprintw(0, 0, "/%s", searchMode.input.c_str());
         attroff(A_BOLD | A_ITALIC);
         clrtoeol();
+    }
+
+    if (object_menu.getMenuObjects() == 0) {
+        mvwprintw(dir_window, y, x, "No results for \"%s\"", searchMode.input.c_str());
+        wclrtoeol(dir_window);
     }
 
     auto print_entry = [this, y, x](std::string name, RootFile::Node* node, int entry){
@@ -194,35 +199,63 @@ void FileBrowser::printDirectories() {
         attron(attr | COLOR_PAIR(col));
         if (entry == object_menu.getSelectedLine()) { attron(A_REVERSE | A_ITALIC); }
         auto entryfmt = fmtstring("%.{}s", menu_width);
+        auto searchfmt = fmtstring("%.{}s", menu_width);
         mvprintw(y + entry, x, entryfmt.c_str(), entry_label.c_str());
-        if (entry ==  object_menu.getSelectedLine()) { attroff(A_REVERSE | A_ITALIC); }
-        attroff(attr | COLOR_PAIR(col));
-        // entry++;
-    };
-
-    for (int i = 0; i < maxlines; ++i) {
-        int nentry = object_menu.getTopEntryIndex() + i;
-        auto MenuEntry = root_file.getEntry(nentry);
-        if (MenuEntry.has_value()) {
-            const auto& [name, node] = *MenuEntry;
-            bool showCondition = (node->openState & RootFile::Node::LISTED) != 0;
-            if (searchMode.isActive) {
-                showCondition = node->showInSearch;
-            }
-
-            if (showCondition) {
-                print_entry(name, node, i);
-                if (i == object_menu.getSelectedLine()) {
-                    // Print info below
-                    auto descr = root_file.toString(node);
-                    move(getmaxy(stdscr)-1, 0);
-                    clrtoeol();
-                    mvprintw(getmaxy(stdscr)-1, 0, "%s", descr.c_str());
+        if (searchMode.isActive) {
+            // Highlight section of matched string
+            auto pos = entry_label.find(searchMode.input);
+            if (pos != entry_label.npos) {
+                int offset = x + pos - node->nesting*2;
+                if (searchMode.input.size() + offset < menu_width) {
+                    attron(COLOR_PAIR(TermColor::col_blue) | A_BOLD);
+                    mvprintw(y + entry, offset, searchfmt.c_str(), searchMode.input.c_str());
+                    attroff(COLOR_PAIR(TermColor::col_blue) | A_BOLD);
                 }
             }
         }
-        else {
-            break;
+        if (entry ==  object_menu.getSelectedLine()) { attroff(A_REVERSE | A_ITALIC); }
+        attroff(attr | COLOR_PAIR(col));
+    };
+
+    auto print_object_name = [this](RootFile::Node* node){
+        auto descr = root_file.toString(node);
+        mvprintw(getmaxy(stdscr) - 1, 0, "%s", descr.c_str());
+        clrtoeol();
+    };
+
+    if (searchMode.isActive) {
+        int nlisted = 0;
+        for (auto& [name, node] : root_file.displayList) {
+            if (node->showInSearch) {
+                print_entry(name, node, nlisted);
+                if (nlisted == object_menu.getSelectedLine()) {
+                    print_object_name(node);
+                }
+                if (nlisted > maxlines - 2) {
+                    break;
+                }
+                nlisted++;
+            }
+        }
+    }
+    else {
+        for (int i = 0; i < maxlines; ++i) {
+            int nentry = object_menu.getTopEntryIndex() + i;
+            auto MenuEntry = root_file.getEntry(nentry);
+            if (MenuEntry.has_value()) {
+                const auto& [name, node] = *MenuEntry;
+                const bool showCondition = (node->openState & RootFile::Node::LISTED) != 0;
+
+                if (showCondition) {
+                    print_entry(name, node, i);
+                    if (i == object_menu.getSelectedLine()) {
+                        print_object_name(node);
+                    }
+                }
+            }
+            else {
+                break;
+            }
         }
     }
 
@@ -974,7 +1007,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
                 setAllSearchResultTrue();
                 searchMode.input.clear();
             }
-            object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
+            object_menu.setMenuExtent(root_file.menuLength(searchMode.isActive), getmaxy(dir_window) - 2);
             break;
         case 's':
             toggleStatsBox();
@@ -1033,7 +1066,7 @@ void FileBrowser::updateSearchResults() {
             node->showInSearch = false; // Make sure this is always hidden
         }
     }
-    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
+    object_menu.setMenuExtent(root_file.menuLength(true), getmaxy(dir_window) - 2);
 }
 
 void FileBrowser::setAllSearchResultTrue() {
@@ -1100,7 +1133,7 @@ void FileBrowser::handleMenuSelect() {
     auto& [name, node] = fetch.value();
     if (node->type == NodeType::DIRECTORY || node->type == NodeType::TTREE) {
         node->toggleOpenOnClick();
-        object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
+        object_menu.setMenuExtent(root_file.menuLength(searchMode.isActive), getmaxy(dir_window) - 2);
     }
     else if (node->type == NodeType::TLEAF) {
         console.clearCommand();

@@ -33,7 +33,7 @@
 // - [x] Help window <?>
 // - [x] Console delete fix
 // - [x] Console history
-// - [ ] Log y axis ticks
+// - [x] Log y axis ticks
 // - [ ] Console horizontal scroll 
 // - [x] Search
 // - [x] Obvious tree should be used for plotting

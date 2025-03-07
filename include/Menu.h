@@ -6,6 +6,8 @@ public:
     int getSelectedLine() const;
     int getSelectedEntryIndex() const;
     int getTopEntryIndex() const;
+    int getMenuLines() const;
+    int getMenuObjects() const;
 
     void setMenuExtent(int nObjects, int maxlines);
 

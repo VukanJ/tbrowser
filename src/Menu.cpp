@@ -15,9 +15,24 @@ int Menu::getTopEntryIndex() const {
     return menu_scroll_pos;
 }
 
+int Menu::getMenuLines() const {
+    return m_nLines;
+}
+
+int Menu::getMenuObjects() const {
+    return m_nObjects;
+}
+
 void Menu::setMenuExtent(int nObjects, int maxLines) {
     m_nObjects = nObjects;
     m_nLines = maxLines;
+    if (selected_pos > maxLines) {
+        selected_pos = maxLines - 1;
+    }
+    if (getSelectedEntryIndex() >= m_nObjects) {
+        // Can't select nothing
+        selected_pos = m_nObjects - 1;
+    }
 }
 
 void Menu::setSelectedLine(int pos) {
