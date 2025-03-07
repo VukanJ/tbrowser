@@ -170,8 +170,7 @@ void FileBrowser::printDirectories() {
         clrtoeol();
     }
 
-    int entry = -menu_scroll_pos;
-    auto print_entry = [this, &entry, y, x](std::string name, RootFile::Node* node){
+    auto print_entry = [this, y, x](std::string name, RootFile::Node* node, int entry){
         std::string entry_label;
         name = std::string(node->nesting * 2, ' ') + name;
         TermColor col = col_white;
@@ -184,43 +183,44 @@ void FileBrowser::printDirectories() {
                     { entry_label = fmtstring("{} {}", SYMB_FOLDER_CLOSED, name); }
                 col = col_yellow;
                 break;
-            case NodeType::TLEAF:   entry_label = fmtstring("{} {}", SYMB_TLEAF, name); attr = A_ITALIC; break;
+            case NodeType::TLEAF:   entry_label = fmtstring("{} {}", SYMB_TLEAF, name); break;
             case NodeType::TTREE:   entry_label = fmtstring("{} {}", SYMB_TTREE, name); col = col_green; attr = A_BOLD; break;
             case NodeType::HIST:    entry_label = fmtstring("{} {}", SYMB_THIST, name); col = col_blue; attr = A_ITALIC; break;
             case NodeType::UNKNOWN: entry_label = fmtstring("{} {}", SYMB_TUNKNOWN, name); col = col_red; break;
         }
+
         attron(attr | COLOR_PAIR(col));
-        if (entry == selected_pos) {
-            attron(A_REVERSE | A_ITALIC);
-        }
+        if (entry == selected_pos) { attron(A_REVERSE | A_ITALIC); }
         auto entryfmt = fmtstring("%.{}s", menu_width);
         mvprintw(y + entry, x, entryfmt.c_str(), entry_label.c_str());
-        if (entry == selected_pos) {
-            attroff(A_REVERSE | A_ITALIC);
-        }
+        if (entry == selected_pos) { attroff(A_REVERSE | A_ITALIC); }
         attroff(attr | COLOR_PAIR(col));
-        entry++;
+        // entry++;
     };
 
-    for (const auto& [name, node] : root_file.displayList) {
-        if (entry < 0) {
-            entry++;
-        }
-        else if (entry < maxlines) {
+    for (int i = 0; i < maxlines; ++i) {
+        int nentry = menu_scroll_pos + i;
+        auto MenuEntry = root_file.getEntry(nentry);
+        if (MenuEntry.has_value()) {
+            const auto& [name, node] = *MenuEntry;
             bool showCondition = (node->openState & RootFile::Node::LISTED) != 0;
             if (searchMode.isActive) {
                 showCondition = node->showInSearch;
             }
 
             if (showCondition) {
-                print_entry(name, node);
-                if (entry == selected_pos+1) {
+                print_entry(name, node, nentry - menu_scroll_pos);
+                if (nentry - menu_scroll_pos == selected_pos) {
+                    // Print info below
                     auto descr = root_file.toString(node);
                     move(getmaxy(stdscr)-1, 0);
                     clrtoeol();
                     mvprintw(getmaxy(stdscr)-1, 0, "%s", descr.c_str());
                 }
             }
+        }
+        else {
+            break;
         }
     }
 
@@ -260,8 +260,17 @@ void FileBrowser::goTop() {
 }
 
 void FileBrowser::goBottom() {
-    selected_pos = getmaxy(dir_window) - 3;
-    menu_scroll_pos = root_file.menuLength(searchMode.isActive) - getmaxy(dir_window) + 2;
+    mvprintw(0, 0, "%i", menu_scroll_pos);
+    const auto mlength = root_file.menuLength(searchMode.isActive);
+    const auto nlines = getmaxy(dir_window) - 3;
+    if (mlength < nlines) {
+        menu_scroll_pos = 0;
+        selected_pos = mlength - 1;
+    }
+    else {
+        selected_pos = nlines - 1;
+        menu_scroll_pos = mlength - nlines;
+    }
 }
 
 void FileBrowser::toggleStatsBox() {
