@@ -293,8 +293,10 @@ TTree* FileBrowser::getActiveTTree() {
     // Get selected tree or the tree of the currently selected branch
     TTree* ttree = nullptr;
     std::size_t entry = selected_pos + menu_scroll_pos;
-    if (entry < root_file.displayList.size()) {
-        auto [name, node] = root_file.displayList.at(entry);
+    auto menuEntry = root_file.getEntry(entry, false);
+
+    if (menuEntry.has_value()) {
+        auto [name, node] = *menuEntry;
         if (node->type == NodeType::TLEAF) {
             ttree = root_file.m_trees[node->mother->index];
         }
@@ -306,9 +308,11 @@ TTree* FileBrowser::getActiveTTree() {
     if (ttree == nullptr) {
         // No tree selected, return obvious single choice
         if (root_file.m_trees.size() == 1) {
-            return root_file.m_trees[0];
+            ttree = root_file.m_trees[0];
         }
-        console.setError("No TTree found in file!");
+        else {
+            console.setError("No TTree found in file!");
+        }
     }
 
     return ttree;
