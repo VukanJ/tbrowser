@@ -86,7 +86,7 @@ endif()
 include(${ROOT_USE_FILE})
 
 # Add executable
-add_executable(${PROGRAM} src/Main.cpp src/Browser.cpp src/AxisTicks.cpp src/Console.cpp src/RootFile.cpp)
+add_executable(${PROGRAM} src/Main.cpp src/Browser.cpp src/AxisTicks.cpp src/Console.cpp src/RootFile.cpp src/Menu.cpp)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Link against ncurses and ROOT

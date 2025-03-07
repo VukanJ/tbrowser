@@ -190,16 +190,16 @@ void FileBrowser::printDirectories() {
         }
 
         attron(attr | COLOR_PAIR(col));
-        if (entry == selected_pos) { attron(A_REVERSE | A_ITALIC); }
+        if (entry == object_menu.getSelectedLine()) { attron(A_REVERSE | A_ITALIC); }
         auto entryfmt = fmtstring("%.{}s", menu_width);
         mvprintw(y + entry, x, entryfmt.c_str(), entry_label.c_str());
-        if (entry == selected_pos) { attroff(A_REVERSE | A_ITALIC); }
+        if (entry ==  object_menu.getSelectedLine()) { attroff(A_REVERSE | A_ITALIC); }
         attroff(attr | COLOR_PAIR(col));
         // entry++;
     };
 
     for (int i = 0; i < maxlines; ++i) {
-        int nentry = menu_scroll_pos + i;
+        int nentry = object_menu.getTopEntryIndex() + i;
         auto MenuEntry = root_file.getEntry(nentry);
         if (MenuEntry.has_value()) {
             const auto& [name, node] = *MenuEntry;
@@ -209,8 +209,8 @@ void FileBrowser::printDirectories() {
             }
 
             if (showCondition) {
-                print_entry(name, node, nentry - menu_scroll_pos);
-                if (nentry - menu_scroll_pos == selected_pos) {
+                print_entry(name, node, i);
+                if (i == object_menu.getSelectedLine()) {
                     // Print info below
                     auto descr = root_file.toString(node);
                     move(getmaxy(stdscr)-1, 0);
@@ -238,40 +238,40 @@ void FileBrowser::printDirectories() {
     refresh();
 }
 
-void FileBrowser::selectionDown() {
-    if (selected_pos == getmaxy(dir_window) - 3) {
-        menu_scroll_pos++;
-    }
-    else {
-        selected_pos = std::min<int>(std::min<int>(root_file.menuLength(searchMode.isActive), getmaxy(dir_window) - 3), selected_pos + 1); 
-    }
-}
+/* void FileBrowser::selectionDown() { */
+/*     /1* if (selected_pos == getmaxy(dir_window) - 3) { *1/ */
+/*     /1*     menu_scroll_pos++; *1/ */
+/*     /1* } *1/ */
+/*     /1* else { *1/ */
+/*     /1*     selected_pos = std::min<int>(std::min<int>(root_file.menuLength(searchMode.isActive), getmaxy(dir_window) - 3), selected_pos + 1); *1/ */ 
+/*     /1* } *1/ */
+/* } */
 
-void FileBrowser::selectionUp() {
-    if (selected_pos == 0 && menu_scroll_pos > 0) {
-        menu_scroll_pos--;
-    }
-    selected_pos = std::max<int>(0, selected_pos - 1); 
-}
+/* void FileBrowser::selectionUp() { */
+/*     /1* if (selected_pos == 0 && menu_scroll_pos > 0) { *1/ */
+/*     /1*     menu_scroll_pos--; *1/ */
+/*     /1* } *1/ */
+/*     /1* selected_pos = std::max<int>(0, selected_pos - 1); *1/ */ 
+/* } */
 
-void FileBrowser::goTop() {
-    selected_pos = 0; 
-    menu_scroll_pos = 0; 
-}
+/* void FileBrowser::goTop() { */
+/*     /1* selected_pos = 0; *1/ */ 
+/*     /1* menu_scroll_pos = 0; *1/ */ 
+/* } */
 
-void FileBrowser::goBottom() {
-    mvprintw(0, 0, "%i", menu_scroll_pos);
-    const auto mlength = root_file.menuLength(searchMode.isActive);
-    const auto nlines = getmaxy(dir_window) - 3;
-    if (mlength < nlines) {
-        menu_scroll_pos = 0;
-        selected_pos = mlength - 1;
-    }
-    else {
-        selected_pos = nlines - 1;
-        menu_scroll_pos = mlength - nlines;
-    }
-}
+/* void FileBrowser::goBottom() { */
+/*     /1* mvprintw(0, 0, "%i", menu_scroll_pos); *1/ */
+/*     /1* const auto mlength = root_file.menuLength(searchMode.isActive); *1/ */
+/*     /1* const auto nlines = getmaxy(dir_window) - 3; *1/ */
+/*     /1* if (mlength < nlines) { *1/ */
+/*     /1*     menu_scroll_pos = 0; *1/ */
+/*     /1*     selected_pos = mlength - 1; *1/ */
+/*     /1* } *1/ */
+/*     /1* else { *1/ */
+/*     /1*     selected_pos = nlines - 1; *1/ */
+/*     /1*     menu_scroll_pos = mlength - nlines; *1/ */
+/*     /1* } *1/ */
+/* } */
 
 void FileBrowser::toggleStatsBox() {
     showstats = !showstats; 
@@ -301,7 +301,7 @@ void FileBrowser::toggleBlockMode() {
 TTree* FileBrowser::getActiveTTree() {
     // Get selected tree or the tree of the currently selected branch
     TTree* ttree = nullptr;
-    std::size_t entry = selected_pos + menu_scroll_pos;
+    std::size_t entry = object_menu.getSelectedEntryIndex();
     auto menuEntry = root_file.getEntry(entry, false);
 
     if (menuEntry.has_value()) {
@@ -338,12 +338,12 @@ void FileBrowser::plotHistogram() {
         }
     }
     else {
-        std::size_t entry = selected_pos + menu_scroll_pos;
-        if (entry < root_file.displayList.size()) {
-            auto [name, node] = root_file.displayList.at(entry);
+        auto Entry = root_file.getEntry(object_menu.getSelectedEntryIndex());
+        if (Entry.has_value()) {
+            const auto& [name, node] = *Entry;
             if (node->type == NodeType::TLEAF) {
                 plotHistogram(root_file.m_trees.at(node->mother->index), 
-                        root_file.m_leaves.at(node->index));
+                              root_file.m_leaves.at(node->index));
             }
         }
     }
@@ -908,7 +908,7 @@ void FileBrowser::handleMouseClick(int y, int x) {
     // Clicked inside window?
     if (isClickInWindow(dir_window, y, x)) {
         const int posy = getbegy(dir_window);
-        selected_pos = y - posy - 1;
+        object_menu.setSelectedLine(y - posy - 1);
         handleMenuSelect();
     }
     else if (colorWindow.show && isClickInWindow(colorWindow.color_window, y, x)) {
@@ -931,10 +931,10 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
                 handleMouseClick(mouse_event.y, mouse_event.x);
             }
             else if (mouse_event.bstate == BUTTON4_PRESSED) {
-                selectionUp();
+                object_menu.moveUp();
             }
             else if (mouse_event.bstate == BUTTON5_PRESSED) {
-                selectionDown();
+                object_menu.moveDown();
             }
         }
         refreshCMDWindow();
@@ -977,12 +977,13 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 
     bool invalid_key = false;
 
+    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2); // TODO call sparingly
     switch (key) {
         case KEY_DOWN:
-            selectionDown();
+            object_menu.moveDown();
             break;
         case KEY_UP:
-            selectionUp();
+            object_menu.moveUp();
             break;
         case KEY_F(1):
             menu_width = std::min<int>(menu_width + 3, getmaxx(stdscr) - 10);
@@ -996,10 +997,10 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             is_running = false;
             break;
         case 'g':
-            goTop();
+            object_menu.goTop();
             break;
         case 'G':
-            goBottom();
+            object_menu.goBottom();
             break;
         case '/':
             searchMode.isActive = !searchMode.isActive;
@@ -1113,7 +1114,7 @@ void FileBrowser::drawEssentials() {
 }
 
 void FileBrowser::handleMenuSelect() {
-    auto fetch = root_file.getEntry(selected_pos + menu_scroll_pos, searchMode.isActive);
+    auto fetch = root_file.getEntry(object_menu.getSelectedEntryIndex(), searchMode.isActive);
     if (!fetch.has_value()) {
         return;
     }

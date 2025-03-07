@@ -12,6 +12,7 @@
 #include "Console.h"
 #include "definitions.h"
 #include "RootFile.h"
+#include "Menu.h"
 #include <nlohmann/json.hpp>
 
 using JSON = nlohmann::json;
@@ -45,10 +46,10 @@ private:
     static bool isClickInWindow(WINDOW*&, int y, int x);
 
     // Menu control
-    void selectionDown();
-    void selectionUp();
-    void goTop();
-    void goBottom();
+    /* void selectionDown(); */
+    /* void selectionUp(); */
+    /* void goTop(); */
+    /* void goBottom(); */
 
     // plot option toggles
     void toggleStatsBox();
@@ -94,8 +95,6 @@ private:
     int bottom_height = 7;
     int yaxis_spacing = 5;
 
-    int selected_pos = 0;
-    int menu_scroll_pos = 0;
     constexpr static float top_hist_clear = 1.1; // Extra space
 
     // Toggles
@@ -133,6 +132,8 @@ private:
         static bool isBranchChar(int key);
     } searchMode;
     void updateSearchResults();
+
+    Menu object_menu;
 };
 
 #endif // BROWSER_H
