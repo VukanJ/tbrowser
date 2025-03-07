@@ -19,8 +19,8 @@
 
 // TODO
 // - [x] Open obvious tree
-// - [ ] Fix menu scroll
-// - [ ] Make console active tree dependent
+// - [x] Fix menu scroll
+// - [x] Make console active tree dependent
 // - [x] histogram spec in drawcall
 // - [x] y axis
 // - [x] Toggle button for menu resize

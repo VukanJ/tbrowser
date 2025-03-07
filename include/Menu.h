@@ -14,6 +14,8 @@ public:
     void setSelectedLine(int pos);
     void moveDown();
     void moveUp();
+    void pageDown();
+    void pageUp();
     void goTop();
     void goBottom();
 

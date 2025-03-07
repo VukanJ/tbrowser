@@ -65,6 +65,19 @@ void Menu::moveUp() {
     }
 }
 
+void Menu::pageDown() {
+    if (getTopEntryIndex() + getMenuLines() < m_nObjects) {
+        menu_scroll_pos += getMenuLines();
+    }
+}
+
+void Menu::pageUp() {
+    menu_scroll_pos -= getMenuLines();
+    if (menu_scroll_pos < 0) {
+        menu_scroll_pos = 0;
+    }
+}
+
 void Menu::goTop() {
     selected_pos = 0;
     menu_scroll_pos = 0;

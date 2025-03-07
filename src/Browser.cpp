@@ -996,12 +996,12 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
     bool invalid_key = false;
 
     switch (key) {
-        case KEY_DOWN:
-            object_menu.moveDown();
-            break;
-        case KEY_UP:
-            object_menu.moveUp();
-            break;
+        case KEY_DOWN:  object_menu.moveDown(); break;
+        case KEY_UP:    object_menu.moveUp(); break;
+        case KEY_PPAGE: object_menu.pageUp(); break;
+        case KEY_NPAGE: object_menu.pageDown(); break;
+        case 'g':       object_menu.goTop(); break;
+        case 'G':       object_menu.goBottom(); break;
         case KEY_F(1):
             menu_width = std::min<int>(menu_width + 3, getmaxx(stdscr) - 10);
             handleResize(true);
@@ -1012,12 +1012,6 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
             break;
         case 'q':
             is_running = false;
-            break;
-        case 'g':
-            object_menu.goTop();
-            break;
-        case 'G':
-            object_menu.goBottom();
             break;
         case '/':
             searchMode.isActive = !searchMode.isActive;
@@ -1169,9 +1163,9 @@ void FileBrowser::helpWindow() {
         mvwprintw(help, ++line, 2, "%s", text.c_str());
     };
 
-    attron(A_UNDERLINE);
-    helpline(" HELP ");
-    attroff(A_UNDERLINE);
+    wattron(help, A_UNDERLINE);
+    helpline("HELP");
+    wattroff(help, A_UNDERLINE);
     line++;
     helpline("Show help ............ <?>");
     helpline("Toggle search mode ... </>");
@@ -1188,9 +1182,9 @@ void FileBrowser::helpWindow() {
     helpline("Quit ................. <q/Ctrl+C>");
 
     line = 0;
-    attron(A_UNDERLINE);
+    wattron(help, A_UNDERLINE);
     mvwprintw(help, ++line, 53, "Terminal capabilities (health check)");
-    attroff(A_UNDERLINE);
+    wattroff(help, A_UNDERLINE);
     line++;
     mvwprintw(help, ++line, 53, "Color support: ........... %s (required)", has_colors() ? "YES" : "NO");
     mvwprintw(help, ++line, 53, "Extended color support: .. %s (required)", can_change_color() ? "YES" : "NO");
