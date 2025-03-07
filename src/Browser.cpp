@@ -172,14 +172,19 @@ void FileBrowser::printDirectories() {
         clrtoeol();
     }
 
+    // No results message
     if (object_menu.getMenuObjects() == 0) {
         mvwprintw(dir_window, y, x, "No results for \"%s\"", searchMode.input.c_str());
         wclrtoeol(dir_window);
     }
+    else {
+        wclear(dir_window);
+    }
 
     auto print_entry = [this, y, x](std::string name, RootFile::Node* node, int entry){
         std::string entry_label;
-        name = std::string(node->nesting * 2, ' ') + name;
+        int nesting = searchMode.isActive ? 0 : node->nesting * 2;
+        name = std::string(nesting, ' ') + name;
         TermColor col = col_white;
         int attr = A_NORMAL;
         switch (node->type) {
@@ -199,16 +204,15 @@ void FileBrowser::printDirectories() {
         attron(attr | COLOR_PAIR(col));
         if (entry == object_menu.getSelectedLine()) { attron(A_REVERSE | A_ITALIC); }
         auto entryfmt = fmtstring("%.{}s", menu_width);
-        auto searchfmt = fmtstring("%.{}s", menu_width);
         mvprintw(y + entry, x, entryfmt.c_str(), entry_label.c_str());
         if (searchMode.isActive) {
             // Highlight section of matched string
             auto pos = entry_label.find(searchMode.input);
             if (pos != entry_label.npos) {
-                int offset = x + pos - node->nesting*2;
-                if (searchMode.input.size() + offset < menu_width) {
+                int offset = x + pos - 2;
+                if (searchMode.input.size() + offset <= menu_width) {
                     attron(COLOR_PAIR(TermColor::col_blue) | A_BOLD);
-                    mvprintw(y + entry, offset, searchfmt.c_str(), searchMode.input.c_str());
+                    mvprintw(y + entry, offset, "%s", searchMode.input.c_str());
                     attroff(COLOR_PAIR(TermColor::col_blue) | A_BOLD);
                 }
             }
@@ -220,6 +224,17 @@ void FileBrowser::printDirectories() {
     auto print_object_name = [this](RootFile::Node* node){
         auto descr = root_file.toString(node);
         mvprintw(getmaxy(stdscr) - 1, 0, "%s", descr.c_str());
+        if (root_file.m_trees.size() > 1) {
+            // Also show corresponding tree
+            if (node->type == NodeType::TLEAF) {
+                const RootFile::Node* mother = node->mother;
+                if (mother->type == NodeType::TTREE) {
+                    attron(COLOR_PAIR(TermColor::col_green));
+                    printw(" TTree=%s", root_file.m_trees.at(mother->index)->GetName());
+                    attroff(COLOR_PAIR(TermColor::col_green));
+                }
+            }
+        }
         clrtoeol();
     };
 
@@ -263,9 +278,11 @@ void FileBrowser::printDirectories() {
     if (searchMode.isActive) {
         attron(A_BOLD | A_REVERSE);
         mvprintw(y - 1, x, "[SEARCH MODE]");
-        mvprintw(y + maxlines, x, "[EXIT WITH '/']");
+        // mvprintw(y + maxlines, x, "[EXIT WITH </>]");
         attroff(A_BOLD | A_REVERSE);
     }
+
+    mvprintw(y + maxlines + 1, 0, "Toggle Search: </>");
 
     wrefresh(dir_window);
     // Very important to refresh(), otherwise input appears delayed and program
@@ -360,10 +377,12 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
-    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading %s...", leaf->GetName());
+    const char* leafname = leaf->GetName();
+    std::string leafname_str(leafname);
+
+    mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5 - leafname_str.size() * 0.5, "Reading %s...", leafname);
     refresh();
 
-    const char* leafname = leaf->GetName();
 
     // Get bounds
     auto bins_x = getBinsx();
@@ -942,7 +961,20 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         return;
     }
 
-    if (searchMode.isActive) {
+    if (console.entering_draw_command) {
+        if (key == KEY_ENTER || key == 10) {
+            if (console.parse()) {
+                plotHistogram();
+            }
+            console.entering_draw_command = false;
+        }
+        else {
+            console.handleInput(key);
+        }
+        refreshCMDWindow();
+        return;
+    }
+    else if (searchMode.isActive) {
         if (SearchMode::isBranchChar(key)) {
             searchMode.input += static_cast<char>(key);
             updateSearchResults();
@@ -959,20 +991,6 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 
     if (colorWindow.show) {
         colorWindow.render();
-    }
-
-    if (console.entering_draw_command && !searchMode.isActive) {
-        if (key == KEY_ENTER || key == 10) {
-            if (console.parse()) {
-                plotHistogram();
-            }
-            console.entering_draw_command = false;
-        }
-        else {
-            console.handleInput(key);
-        }
-        refreshCMDWindow();
-        return;
     }
 
     bool invalid_key = false;
