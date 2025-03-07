@@ -45,12 +45,6 @@ private:
     void handleInput(int key);
     static bool isClickInWindow(WINDOW*&, int y, int x);
 
-    // Menu control
-    /* void selectionDown(); */
-    /* void selectionUp(); */
-    /* void goTop(); */
-    /* void goBottom(); */
-
     // plot option toggles
     void toggleStatsBox();
     void toggleLogy();
@@ -132,6 +126,7 @@ private:
         static bool isBranchChar(int key);
     } searchMode;
     void updateSearchResults();
+    void setAllSearchResultTrue();
 
     Menu object_menu;
 };

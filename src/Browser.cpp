@@ -52,6 +52,7 @@ void FileBrowser::initAllWindows() {
     createWindow(main_window, sizey - bottom_height, sizex - menu_width - yaxis_spacing, 1, menu_width + yaxis_spacing);
     createWindow(dir_window, sizey - bottom_height, menu_width, 1, 0);
     createWindow(cmd_window, 3, sizex - 25, sizey - bottom_height + 3, 20 + 5);
+    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
 }
 
 FileBrowser::~FileBrowser() {
@@ -150,11 +151,12 @@ void FileBrowser::saveSettings() {
 }
 
 void FileBrowser::loadFile(std::string filename) {
-    mvwprintw(dir_window, 1, 1, "Reading...");
+    mvwprintw(dir_window, 0, 1, "Reading...");
     wrefresh(dir_window);
 
     root_file.load(filename);
     console.setTabCompletionDict(root_file.displayList);
+    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
 }
 
 void FileBrowser::printDirectories() {
@@ -237,41 +239,6 @@ void FileBrowser::printDirectories() {
     // looks glitched while resize
     refresh();
 }
-
-/* void FileBrowser::selectionDown() { */
-/*     /1* if (selected_pos == getmaxy(dir_window) - 3) { *1/ */
-/*     /1*     menu_scroll_pos++; *1/ */
-/*     /1* } *1/ */
-/*     /1* else { *1/ */
-/*     /1*     selected_pos = std::min<int>(std::min<int>(root_file.menuLength(searchMode.isActive), getmaxy(dir_window) - 3), selected_pos + 1); *1/ */ 
-/*     /1* } *1/ */
-/* } */
-
-/* void FileBrowser::selectionUp() { */
-/*     /1* if (selected_pos == 0 && menu_scroll_pos > 0) { *1/ */
-/*     /1*     menu_scroll_pos--; *1/ */
-/*     /1* } *1/ */
-/*     /1* selected_pos = std::max<int>(0, selected_pos - 1); *1/ */ 
-/* } */
-
-/* void FileBrowser::goTop() { */
-/*     /1* selected_pos = 0; *1/ */ 
-/*     /1* menu_scroll_pos = 0; *1/ */ 
-/* } */
-
-/* void FileBrowser::goBottom() { */
-/*     /1* mvprintw(0, 0, "%i", menu_scroll_pos); *1/ */
-/*     /1* const auto mlength = root_file.menuLength(searchMode.isActive); *1/ */
-/*     /1* const auto nlines = getmaxy(dir_window) - 3; *1/ */
-/*     /1* if (mlength < nlines) { *1/ */
-/*     /1*     menu_scroll_pos = 0; *1/ */
-/*     /1*     selected_pos = mlength - 1; *1/ */
-/*     /1* } *1/ */
-/*     /1* else { *1/ */
-/*     /1*     selected_pos = nlines - 1; *1/ */
-/*     /1*     menu_scroll_pos = mlength - nlines; *1/ */
-/*     /1* } *1/ */
-/* } */
 
 void FileBrowser::toggleStatsBox() {
     showstats = !showstats; 
@@ -977,7 +944,6 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 
     bool invalid_key = false;
 
-    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2); // TODO call sparingly
     switch (key) {
         case KEY_DOWN:
             object_menu.moveDown();
@@ -1005,8 +971,10 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
         case '/':
             searchMode.isActive = !searchMode.isActive;
             if (searchMode.isActive) {
+                setAllSearchResultTrue();
                 searchMode.input.clear();
             }
+            object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
             break;
         case 's':
             toggleStatsBox();
@@ -1059,10 +1027,20 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
 void FileBrowser::updateSearchResults() {
     for (auto& [name, node] : root_file.displayList) {
         if (node->type == NodeType::TLEAF) {
-            node -> showInSearch = string_contains(name, searchMode.input);
+            node->showInSearch = string_contains(name, searchMode.input);
         }
         else {
             node->showInSearch = false; // Make sure this is always hidden
+        }
+    }
+    object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
+}
+
+void FileBrowser::setAllSearchResultTrue() {
+    // Show all search results on launch
+    if (searchMode.input.empty()) {
+        for (auto& [name, node] : root_file.displayList) {
+            node->showInSearch = node->type == NodeType::TLEAF;
         }
     }
 }
@@ -1122,6 +1100,7 @@ void FileBrowser::handleMenuSelect() {
     auto& [name, node] = fetch.value();
     if (node->type == NodeType::DIRECTORY || node->type == NodeType::TTREE) {
         node->toggleOpenOnClick();
+        object_menu.setMenuExtent(root_file.menuLength(), getmaxy(dir_window) - 2);
     }
     else if (node->type == NodeType::TLEAF) {
         console.clearCommand();
