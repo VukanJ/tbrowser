@@ -46,11 +46,11 @@ private:
     int npixel = 0;
 
     // data minima and maxima
-    double vmin;
-    double vmax;
+    double vmin = 0;
+    double vmax = 1;
     // plot minima and maxima
-    double vmin_adjust;
-    double vmax_adjust;
+    double vmin_adjust = 0;
+    double vmax_adjust = 1;
 
 };
 

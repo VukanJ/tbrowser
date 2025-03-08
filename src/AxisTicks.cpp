@@ -1,10 +1,8 @@
 #include "AxisTicks.h"
-#include <iostream>
 #include <algorithm>
 #include <cmath>
 #include <cassert>
 
-#include <ncurses.h>
 #include <string>
 #include "TAxis.h"
 
@@ -19,7 +17,7 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
     if (min > max) {
         throw std::runtime_error(fmtstring("max > min is required, got {} {}", min, max));
     }
-    else if (min == max) {
+    if (min == max) {
         vmin--;
         vmax++;
     }
@@ -40,15 +38,15 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
 
 void AxisTicks::init_logarithmic() {
     logarithmic = true;
-    double minMag = floor(log10(std::max<double>(vmin, 0.5)));
+    double minMag = floor(log10(std::max<double>(vmin, minimum_log_bin)));
     double maxMag = ceil(log10(vmax));
 
     if (minMag == maxMag) {
         maxMag++;
     }
 
-    vmin = log10(std::max<double>(vmin, 0.5));
-    vmax = log10(std::max<double>(vmax, 0.5));
+    vmin = log10(std::max<double>(vmin, minimum_log_bin));
+    vmax = log10(std::max<double>(vmax, minimum_log_bin));
     vmin_adjust = minMag;
     vmax_adjust = maxMag;
 
@@ -133,9 +131,7 @@ void AxisTicks::init_linear(int napprox) {
         E = minus_intfinity;
         for (auto v : values_d) {
             auto mag = trunc(log10(std::abs(v)));
-            if (mag > E) {
-                E = mag;
-            }
+            E = std::max<double>(mag, E);
         }
         if (std::abs(E) >= 2) {
             for (auto& v : values_d) { 
@@ -199,16 +195,13 @@ void AxisTicks::setAxisPixels(int npix) {
 }
 
 AxisTicks::Tick AxisTicks::getTick(int i, bool adjusted_range) const {
-    if (i < 0 || i >= nticks) return {};
+    if (i < 0 || i >= nticks) { 
+        return {}; 
+    }
     
     Tick tick;
     if (logarithmic) {
-        if (adjusted_range) {
-            tick.char_position = (values_i[i] - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
-        }
-        else {
-            tick.char_position = (values_i[i] - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
-        }
+        tick.char_position = (values_i[i] - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
     }
     else {
         if (adjusted_range) {

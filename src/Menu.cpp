@@ -1,7 +1,5 @@
 #include "Menu.h"
 #include <algorithm>
-#include <ncurses.h>
-
 
 int Menu::getSelectedLine() const {
     return selected_pos;
@@ -73,9 +71,7 @@ void Menu::pageDown() {
 
 void Menu::pageUp() {
     menu_scroll_pos -= getMenuLines();
-    if (menu_scroll_pos < 0) {
-        menu_scroll_pos = 0;
-    }
+    menu_scroll_pos = std::max(menu_scroll_pos, 0);
 }
 
 void Menu::goTop() {

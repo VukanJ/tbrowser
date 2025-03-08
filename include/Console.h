@@ -38,10 +38,10 @@ public:
     bool parse();
     void redraw(int posy, int posx);
 
-    bool hasCommand();
+    bool hasCommand() const;
     void clearCommand();
     void loadCommandHistory(const std::string& historyFile);
-    void setError(const char* str);
+    void setError(const char* error);
 
     bool entering_draw_command = false; // In focus
 

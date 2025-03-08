@@ -1,11 +1,11 @@
-#include <clocale>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
 #include <iostream>
 #include <filesystem>
 #include <string>
-#include <csignal>
+#include <clocale>
 
 #include <ncurses.h>
 #include "Browser.h"
@@ -35,6 +35,7 @@
 // - [x] Console history
 // - [x] Log y axis ticks
 // - [ ] Console horizontal scroll 
+// - [ ] Bring rightmost bin inside range
 // - [x] Search
 // - [x] Obvious tree should be used for plotting
 // - [x] Settings persistence
@@ -82,7 +83,7 @@ int main(int argc, char* argv[]) {
     FileBrowser browser;
 
     try {
-        browser.loadFile(filename.c_str());
+        browser.loadFile(filename);
     }
     catch (std::runtime_error& error) {
         endwin();
@@ -115,7 +116,7 @@ int main(int argc, char* argv[]) {
         select(resize_fd[0] + 1, &fds, NULL, NULL, NULL);
 
         if (FD_ISSET(resize_fd[0], &fds)) {
-            char buf;
+            char buf = 0;
             read(resize_fd[0], &buf, 1);
             // Handle resize
             browser.handleResize();

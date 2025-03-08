@@ -1,8 +1,10 @@
 #include "RootFile.h"
 #include "TKey.h"
 #include "definitions.h"
+#include <memory>
 
-RootFile::Node::Node() : type(NodeType::UNKNOWN), index(-1) { }
+
+RootFile::Node::Node() : type(NodeType::UNKNOWN) { }
 
 RootFile::Node::Node(NodeType nt, int idx, Node* mot, int nest) 
     : type(nt), index(idx), mother(mot), nesting(nest) { }
@@ -150,16 +152,16 @@ std::string RootFile::toString(Node* node) {
 
 void RootFile::traverseTFile(TDirectory* dir, RootFile::Node* node, int depth) {
     TList* keys = dir->GetListOfKeys();
-    if (!keys) {
+    if (keys == nullptr) {
         return;
     }
 
     for (int i = 0; i < keys->GetSize(); ++i) {
-        TKey* key = static_cast<TKey*>(keys->At(i));
+        TKey* key = dynamic_cast<TKey*>(keys->At(i));
         TObject* obj = key->ReadObj();
 
         if (strcmp(key->GetClassName(), "TTree") == 0) {
-            TTree* tree = dynamic_cast<TTree*>(obj);
+            auto* tree = dynamic_cast<TTree*>(obj);
             m_trees.push_back(tree);
             node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::TTREE, m_trees.size() - 1, node, depth));
             readBranches(node->nodes.back().get(), tree, depth + 1);
@@ -171,10 +173,10 @@ void RootFile::traverseTFile(TDirectory* dir, RootFile::Node* node, int depth) {
         else if (obj->IsA()->InheritsFrom(TDirectory::Class())) {
             m_directories.push_back(dynamic_cast<TDirectory*>(obj));
             node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::DIRECTORY, m_directories.size() - 1, node, depth));
-            traverseTFile((TDirectory*)obj, node->nodes.back().get(), depth + 1);
+            traverseTFile(dynamic_cast<TDirectory*>(obj), node->nodes.back().get(), depth + 1);
         }
         else {
-            m_unclassified.push_back(dynamic_cast<TObject*>(obj));
+            m_unclassified.push_back(obj);
             node->nodes.emplace_back(std::make_unique<RootFile::Node>(NodeType::UNKNOWN, m_unclassified.size() - 1, node, depth));
         }
     }
@@ -199,7 +201,7 @@ void RootFile::traverseTFile(std::string& filename) {
 
 void RootFile::readBranches(RootFile::Node* node, TTree* tree, int depth) {
     for (auto* leaf : *tree->GetListOfLeaves()) {
-        m_leaves.push_back(static_cast<TLeaf*>(leaf));
+        m_leaves.push_back(dynamic_cast<TLeaf*>(leaf));
         node->nodes.emplace_back(std::make_unique<RootFile::Node>(
                     NodeType::TLEAF, m_leaves.size() - 1, node, depth));
     }

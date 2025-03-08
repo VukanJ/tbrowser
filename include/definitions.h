@@ -24,6 +24,8 @@ inline bool string_contains(const std::string& str, const std::string& x) {
 #endif
 }
 
+inline constexpr double minimum_log_bin = 0.5;
+
 inline constexpr std::array<const char[4], 8>  ascii_2x2 { "▖", "▗", "▄", "▌", "▐", "▙", "▟", "█" };
 inline constexpr std::array<const char[5], 16> ascii_3x2 { "🬏", "🬞", "🬭", "🬱", "🬵", "🬹", "🬓", "🬦", "▌", "▐", "🬲", "🬷", "🬺", "🬻", "█"};
 inline constexpr std::array<const char[5], 24> ascii_4x2 { 
@@ -247,6 +249,5 @@ static inline auto make_superscript(int n) {
     return std::to_string(n);
 #endif
 }
-
 
 #endif // DEFINITIONS_H

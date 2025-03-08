@@ -121,10 +121,10 @@ void FileBrowser::loadSettings() {
     if (settings.is_open()) {
         settings >> settings_json;
         if (settings_json.contains("blockmode")) {
+            blockmode = 2;
             if (settings_json["blockmode"] == "2x2") {      blockmode = 2; }
             else if (settings_json["blockmode"] == "3x2") { blockmode = 3; }
             else if (settings_json["blockmode"] == "4x2") { blockmode = 4; }
-            else { blockmode = 2; };
         }
         if (settings_json.contains("statsbox")) {
             showstats = settings_json["statsbox"];
@@ -161,9 +161,9 @@ void FileBrowser::loadFile(std::string filename) {
 
 void FileBrowser::printDirectories() {
     if (skipDraw) { skipDraw = false; return; }
-    int x = getbegx(dir_window) + 1;
-    int y = getbegy(dir_window) + 1;
-    int maxlines = object_menu.getMenuLines();
+    const int x = getbegx(dir_window) + 1;
+    const int y = getbegy(dir_window) + 1;
+    const int maxlines = object_menu.getMenuLines();
 
     if (searchMode.isActive) {
         attron(A_BOLD | A_ITALIC);
@@ -183,7 +183,7 @@ void FileBrowser::printDirectories() {
 
     auto print_entry = [this, y, x](std::string name, RootFile::Node* node, int entry){
         std::string entry_label;
-        int nesting = searchMode.isActive ? 0 : node->nesting * 2;
+        const int nesting = searchMode.isActive ? 0 : node->nesting * 2;
         name = std::string(nesting, ' ') + name;
         TermColor col = col_white;
         int attr = A_NORMAL;
@@ -208,9 +208,9 @@ void FileBrowser::printDirectories() {
         if (searchMode.isActive) {
             // Highlight section of matched string
             auto pos = entry_label.find(searchMode.input);
-            if (pos != entry_label.npos) {
+            if (pos != std::string::npos) {
                 int offset = x + pos - 2;
-                if (searchMode.input.size() + offset <= menu_width) {
+                if (searchMode.input.size() + offset <= static_cast<std::size_t>(menu_width)) {
                     attron(COLOR_PAIR(TermColor::col_blue) | A_BOLD);
                     mvprintw(y + entry, offset, "%s", searchMode.input.c_str());
                     attroff(COLOR_PAIR(TermColor::col_blue) | A_BOLD);
@@ -407,8 +407,8 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
 
 void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
     // Get window position and size
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
+    const int winx = getbegx(main_window);
+    const int winy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
@@ -455,8 +455,8 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
         // SKIP!
         TTreeFormula formula("FORM", varexp.expression.c_str(), ttree);
         auto nEntriesTop = ttree->GetEntries();
-        Long64_t len;
-        ttree->SetBranchStatus(lenLeaf->GetName(), 1);
+        Long64_t len = 0;
+        ttree->SetBranchStatus(lenLeaf->GetName(), true);
         ttree->SetBranchAddress(lenLeaf->GetName(), &len);
         for (int i = 0; i < nEntriesTop; ++i) {
             ttree->GetEntry(i);
@@ -516,15 +516,15 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
 void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
     // The console has already checked whether the format is correct for 2D drawing
     // Get window position and size
-    int winx = getbegx(main_window);
-    int winy = getbegy(main_window);
+    const int winx = getbegx(main_window);
+    const int winy = getbegy(main_window);
     getmaxyx(main_window, mainwin_y, mainwin_x);
     box(main_window, 0, 0);
 
     mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5, "Reading...");
     refresh();
 
-    auto& [varexp, selection, option, nentries, firstentry] = args;
+    const auto& [varexp, selection, option, nentries, firstentry] = args;
 
     TTree* ttree = getActiveTTree();
     if (ttree == nullptr) {
@@ -629,7 +629,7 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
     double pixel_y = max_height / binsy;
 
     if (logscale) {
-        max_height = log(max_height) + 1.0f;  //+1 order of base magnitude for plotting
+        max_height = log(max_height) + 1.0F;  //+1 order of base magnitude for plotting
         pixel_y = max_height / binsy;
     }
     // Draw ASCII art
@@ -732,7 +732,7 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
 }
 
 void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
-    double max_height = hist->GetAt(hist->GetMaximumBin());
+    const double max_height = hist->GetAt(hist->GetMaximumBin());
 
     wclear(main_window);
     wrefresh(main_window);
@@ -741,7 +741,7 @@ void FileBrowser::plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx) {
     for (int x = 0; x < binsx + 1; x++) {
         for (int y = 0; y < binsy + 1; y++) {
             auto Z = hist->GetBinContent(x, y);
-            if (Z == 0) continue;
+            if (Z == 0) { continue; }
             auto pixel_color = std::lerp(col_grayscale_start, col_grayscale_end + 1, Z / max_height);
             pixel_color = std::clamp<int>(pixel_color, col_grayscale_start, col_grayscale_end - 1);
             wattron(main_window, COLOR_PAIR(pixel_color));
@@ -1159,7 +1159,7 @@ void FileBrowser::helpWindow() {
     WINDOW* help = newwin(getmaxy(stdscr) - 2*margin, getmaxx(stdscr) - 2* margin, margin, margin);
 
     int line = 0;
-    auto helpline = [&line, &help] (std::string text) {
+    auto helpline = [&line, &help] (const std::string& text) {
         mvwprintw(help, ++line, 2, "%s", text.c_str());
     };
 

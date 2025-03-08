@@ -3,6 +3,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <filesystem>
 #include <ncurses.h>
 #include <stdexcept>
@@ -10,8 +11,8 @@
 #include "definitions.h"
 
 Console::Console() {
-    std::string chars = " \",._<>()[]=!&|?+-*/%:@$";
-    for (char c : chars) allowed_chars.insert(c);
+    const std::string chars = " \",._<>()[]=!&|?+-*/%:@$";
+    for (char c : chars) { allowed_chars.insert(c); }
 }
 
 Console::~Console() {
@@ -29,7 +30,7 @@ Console::~Console() {
 Console::FirstDrawArg::FirstDrawArg(std::string ex) {
     // Unpack a specification like "var1+var2>>(0, 1, 2, 6)"
     auto beg = ex.find(">>(");
-    if (beg == ex.npos) {
+    if (beg == std::string::npos) {
         expression = ex;
     }
     else {
@@ -55,11 +56,11 @@ Console::FirstDrawArg::FirstDrawArg(std::string ex) {
             error_code = LimitError::LimitOrdering;
         }
     }
-    else if (limits.size() != 0) {
+    else if (!limits.empty()) {
         error_code = LimitError::LimitNumber;
     }
 
-    int ncolon = std::count(expression.begin(), expression.end(), ':');
+    const int ncolon = std::count(expression.begin(), expression.end(), ':');
     if (ncolon > 0) {
         if (ncolon > 1) {
             error_code = LimitError::No3DHists;
@@ -96,8 +97,8 @@ bool Console::parse() {
         // User is specifying histogram
         // "var1>>(10, 100, 0, 1)" can be the first token
         auto start_hist_spec = current_input.find(">>(");
-        auto end_hist_spec = current_input.find(")", start_hist_spec);
-        if (end_hist_spec == current_input.npos) {
+        auto end_hist_spec = current_input.find(')', start_hist_spec);
+        if (end_hist_spec == std::string::npos) {
             last_error = "Syntax error";
             has_command = false;
             return false;
@@ -118,7 +119,7 @@ bool Console::parse() {
     // Parse entries, do basic checks
     auto ntokens = tokens.size();
     bool valid = true;
-    if (ntokens >= 1) { std::get<0>(current_args) = FirstDrawArg(tokens[0].c_str()); }
+    if (ntokens >= 1) { std::get<0>(current_args) = FirstDrawArg(tokens[0]); }
     
     switch (std::get<0>(current_args).error_code) {
         case FirstDrawArg::LimitError::NoError: break;
@@ -141,7 +142,7 @@ bool Console::parse() {
         return valid;
     }
 
-    if (ntokens >= 2) { std::get<1>(current_args) = tokens[1].c_str(); }
+    if (ntokens >= 2) { std::get<1>(current_args) = tokens[1]; }
     if (ntokens >= 3) { std::get<2>(current_args) = tokens[2].c_str(); }
     try {
         if (ntokens >= 4) { std::get<3>(current_args) = std::stoll(tokens[3]); }
@@ -388,7 +389,7 @@ void Console::redraw(int posy, int posx) {
     }
 }
 
-bool Console::hasCommand() {
+bool Console::hasCommand() const {
     return has_command;
 }
 

@@ -30,7 +30,7 @@ public:
 
         NodeType type; // TObject category
         int index = -1; // Logical pointer to storage
-        Node* mother; // So leaves know their tree
+        Node* mother = nullptr; // So leaves know their tree
         std::vector<std::unique_ptr<Node>> nodes;
 
         enum OpenState {DIR_OPEN = 0b10, LISTED = 0b01, DEFAULT=0b0};

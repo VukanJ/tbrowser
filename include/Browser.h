@@ -82,8 +82,8 @@ private:
     WINDOW* cmd_window = nullptr;
     std::filesystem::path dotpath;
 
-    int mainwin_x;
-    int mainwin_y;
+    int mainwin_x = 1;
+    int mainwin_y = 1;
 
     int menu_width = 20;
     int bottom_height = 7;
