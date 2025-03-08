@@ -37,6 +37,7 @@
 // - [ ] Console horizontal scroll 
 // - [ ] Bring rightmost bin inside range
 // - [ ] Color picker
+// - [x] Fix log y range
 // - [x] Search
 // - [x] Obvious tree should be used for plotting
 // - [x] Settings persistence
@@ -54,12 +55,12 @@ int main(int argc, char* argv[]) {
     // Read argument
     std::string filename;
 #ifdef DEBUG
-    AxisTicks at(4, 2308573498, 7, true);
-    at.setAxisPixels(100);
+    AxisTicks at(0, 218.900005, 5, true);
+    at.setAxisPixels(55);
+    std::cout << fmtstring("[{} {}]\n", at.min(), at.max());
     for (int t = 0; t < at.nticks; ++t) {
         auto tick = at.getTick(t, true);
-        // std::cout << std::format("{} E={} d={} i={} s={}", t, at.E, at.values_d[t], at.values_i[t], at.values_str[t]) << std::endl;
-        std::cout << std::format("{} {} {}", t, tick.char_position, tick.tickstr) << std::endl;
+        std::cout << fmtstring("{} {} {}", t, tick.char_position, tick.tickstr) << std::endl;
     }
     return 0;
 #else

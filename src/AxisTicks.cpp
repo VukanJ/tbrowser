@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cassert>
+#include <ncurses.h>
 
 #include <string>
 #include "TAxis.h"
@@ -42,6 +43,7 @@ bool AxisTicks::isValid() const {
 }
 
 void AxisTicks::init_logarithmic() {
+    mvprintw(0, 0, "%f %f", vmin, vmax);
     logarithmic = true;
     double minMag = floor(log10(std::max<double>(vmin, minimum_log_bin)));
     double maxMag = ceil(log10(vmax));
@@ -206,7 +208,7 @@ AxisTicks::Tick AxisTicks::getTick(int i, bool adjusted_range) const {
     
     Tick tick;
     if (logarithmic) {
-        tick.char_position = (values_i[i] - vmin_adjust) / (vmax_adjust - vmin_adjust) * npixel;
+        tick.char_position = (values_i[i] - vmin) / (vmax - vmin) * npixel;
     }
     else {
         if (adjusted_range) {
@@ -223,7 +225,7 @@ AxisTicks::Tick AxisTicks::getTick(int i, bool adjusted_range) const {
     }
 
     if (logarithmic) {
-        if (values_i[i] <= 2) {
+        if (values_i[i] <= 2 && values_i[i] >= 0) {
             tick.tickstr = std::to_string(static_cast<int>(std::pow<int>(10, values_i[i])));
             tick.tickstr_length = tick.tickstr.size();
         }
