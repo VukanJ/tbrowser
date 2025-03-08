@@ -29,7 +29,7 @@ void Menu::setMenuExtent(int nObjects, int maxLines) {
     }
     if (getSelectedEntryIndex() >= m_nObjects) {
         // Can't select nothing
-        selected_pos = m_nObjects - 1;
+        selected_pos = std::max<int>(0, m_nObjects - 1);
     }
 }
 
@@ -67,6 +67,8 @@ void Menu::pageDown() {
     if (getTopEntryIndex() + getMenuLines() < m_nObjects) {
         menu_scroll_pos += getMenuLines();
     }
+
+    selected_pos = std::clamp(selected_pos, 0, std::min<int>(m_nLines - 1, m_nObjects - menu_scroll_pos - 1));
 }
 
 void Menu::pageUp() {

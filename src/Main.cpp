@@ -36,6 +36,7 @@
 // - [x] Log y axis ticks
 // - [ ] Console horizontal scroll 
 // - [ ] Bring rightmost bin inside range
+// - [ ] Color picker
 // - [x] Search
 // - [x] Obvious tree should be used for plotting
 // - [x] Settings persistence

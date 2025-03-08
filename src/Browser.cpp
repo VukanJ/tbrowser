@@ -183,7 +183,7 @@ void FileBrowser::printDirectories() {
 
     auto print_entry = [this, y, x](std::string name, RootFile::Node* node, int entry){
         std::string entry_label;
-        const int nesting = searchMode.isActive ? 0 : node->nesting * 2;
+        const int nesting = searchMode.isActive ? 0 : node->nesting;
         name = std::string(nesting, ' ') + name;
         TermColor col = col_white;
         int attr = A_NORMAL;
@@ -239,24 +239,29 @@ void FileBrowser::printDirectories() {
     };
 
     if (searchMode.isActive) {
-        int nlisted = 0;
-        for (auto& [name, node] : root_file.displayList) {
-            if (node->showInSearch) {
-                print_entry(name, node, nlisted);
-                if (nlisted == object_menu.getSelectedLine()) {
-                    print_object_name(node);
+        for (int i = 0; i < maxlines; ++i) {
+            int nentry = object_menu.getTopEntryIndex() + i;
+            auto MenuEntry = root_file.getEntry(nentry, true);
+            if (MenuEntry.has_value()) {
+                const auto& [name, node] = *MenuEntry;
+                const bool showCondition = node->showInSearch;
+
+                if (showCondition) {
+                    print_entry(name, node, i);
+                    if (i == object_menu.getSelectedLine()) {
+                        print_object_name(node);
+                    }
                 }
-                if (nlisted > maxlines - 2) {
-                    break;
-                }
-                nlisted++;
+            }
+            else {
+                break;
             }
         }
     }
     else {
         for (int i = 0; i < maxlines; ++i) {
             int nentry = object_menu.getTopEntryIndex() + i;
-            auto MenuEntry = root_file.getEntry(nentry);
+            auto MenuEntry = root_file.getEntry(nentry, false);
             if (MenuEntry.has_value()) {
                 const auto& [name, node] = *MenuEntry;
                 const bool showCondition = (node->openState & RootFile::Node::LISTED) != 0;
