@@ -237,45 +237,22 @@ void FileBrowser::printDirectories() {
         }
         clrtoeol();
     };
+    for (int i = 0; i < maxlines; ++i) {
+        int nentry = object_menu.getTopEntryIndex() + i;
+        auto MenuEntry = root_file.getEntry(nentry, searchMode.isActive);
+        if (MenuEntry.has_value()) {
+            const auto& [name, node] = *MenuEntry;
+            const bool showCondition = searchMode.isActive ? node->showInSearch : (node->openState & RootFile::Node::LISTED) != 0;
 
-    if (searchMode.isActive) {
-        for (int i = 0; i < maxlines; ++i) {
-            int nentry = object_menu.getTopEntryIndex() + i;
-            auto MenuEntry = root_file.getEntry(nentry, true);
-            if (MenuEntry.has_value()) {
-                const auto& [name, node] = *MenuEntry;
-                const bool showCondition = node->showInSearch;
-
-                if (showCondition) {
-                    print_entry(name, node, i);
-                    if (i == object_menu.getSelectedLine()) {
-                        print_object_name(node);
-                    }
+            if (showCondition) {
+                print_entry(name, node, i);
+                if (i == object_menu.getSelectedLine()) {
+                    print_object_name(node);
                 }
-            }
-            else {
-                break;
             }
         }
-    }
-    else {
-        for (int i = 0; i < maxlines; ++i) {
-            int nentry = object_menu.getTopEntryIndex() + i;
-            auto MenuEntry = root_file.getEntry(nentry, false);
-            if (MenuEntry.has_value()) {
-                const auto& [name, node] = *MenuEntry;
-                const bool showCondition = (node->openState & RootFile::Node::LISTED) != 0;
-
-                if (showCondition) {
-                    print_entry(name, node, i);
-                    if (i == object_menu.getSelectedLine()) {
-                        print_object_name(node);
-                    }
-                }
-            }
-            else {
-                break;
-            }
+        else {
+            break;
         }
     }
 
@@ -1025,6 +1002,7 @@ void FileBrowser::handleInputEvent(MEVENT& mouse_event, int key) {
                 searchMode.input.clear();
             }
             object_menu.setMenuExtent(root_file.menuLength(searchMode.isActive), getmaxy(dir_window) - 2);
+            object_menu.goTop();
             break;
         case 's':
             toggleStatsBox();
