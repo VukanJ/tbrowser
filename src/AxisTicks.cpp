@@ -20,8 +20,8 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
         throw std::runtime_error(fmtstring("max > min is required, got {} {}", min, max));
     }
     else if (min == max) {
-        min--;
-        max++;
+        vmin--;
+        vmax++;
     }
 
     if (logarithmic) {

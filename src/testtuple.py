@@ -25,5 +25,5 @@ with uproot.recreate("build/ntuple.root") as F:
     F["tree_2"] = df1
     F["tree_3"] = df1
     F["utility/subfolder/particles"] = df2
-    # F["Words"] = "Hello World!"
+    F["Words"] = "Hello World!"
 
