@@ -60,6 +60,7 @@ private:
     void plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const;
     void plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx);
     void drawEssentials();
+    void showEmpty();
 
     // Window refreshing
     void initAllWindows();

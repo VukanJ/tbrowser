@@ -15,7 +15,8 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
     // vmin_adjust and vmax_adjust are the adjusted bounds
 
     if (min > max) {
-        throw std::runtime_error(fmtstring("max > min is required, got {} {}", min, max));
+        valid = false;
+        return;
     }
     if (min == max) {
         vmin--;
@@ -34,6 +35,10 @@ AxisTicks::AxisTicks(double min, double max, int napprox, bool logarithmic)
     assert(static_cast<int>(values_str.size()) == nticks);
     assert(vmax > vmin);
     assert(vmax_adjust > vmin_adjust);
+}
+
+bool AxisTicks::isValid() const {
+    return valid;
 }
 
 void AxisTicks::init_logarithmic() {

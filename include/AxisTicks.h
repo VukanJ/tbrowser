@@ -25,6 +25,7 @@ public:
 
     int maxLabelWidth() const;
     void setAxisPixels(int);
+    bool isValid() const;
 
     Tick getTick(int i, bool adjusted_range) const;
 
@@ -44,6 +45,7 @@ private:
     void init_logarithmic();
 
     int npixel = 0;
+    bool valid = true;
 
     // data minima and maxima
     double vmin = 0;

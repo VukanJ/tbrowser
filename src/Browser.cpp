@@ -365,7 +365,6 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
     mvprintw(winy + mainwin_y / 2, winx + mainwin_x / 2 - 5 - leafname_str.size() * 0.5, "Reading %s...", leafname);
     refresh();
 
-
     // Get bounds
     auto bins_x = getBinsx();
     auto bins_y = getBinsy();
@@ -377,14 +376,28 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
 
     tree->Project("H", leafname);
 
-    AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
-    
-    plotYAxis(yaxis, true);
-    plotXAxis(xaxis, false); // use minAdjusted as in histogram
-    plotASCIIHistogram(&hist, bins_y, bins_x);
-    plotCanvasAnnotations(&hist);
+    if (hist.GetEntries() == 0) {
+        showEmpty();
+    }
+    else {
+        AxisTicks yaxis(0, hist.GetAt(hist.GetMaximumBin())*top_hist_clear, 5, logscale);
 
+        plotYAxis(yaxis, true);
+        plotXAxis(xaxis, false);
+        plotASCIIHistogram(&hist, bins_y, bins_x);
+        plotCanvasAnnotations(&hist);
+    }
     refresh();
+}
+
+void FileBrowser::showEmpty() {
+    wclear(main_window);
+    box(main_window, 0, 0);
+    drawEssentials();
+    wattron(main_window, A_BOLD);
+    mvwprintw(main_window, mainwin_y / 2, mainwin_x / 2 - 3, "Empty");
+    wattroff(main_window, A_BOLD);
+    wrefresh(main_window);
 }
 
 void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
@@ -756,9 +769,7 @@ void FileBrowser::plotCanvasAnnotations(TH1* hist) {
     }
 
     if (hist->GetEntries() == 0) {
-        wattron(main_window, A_BOLD);
-        mvwprintw(main_window, mainwin_y / 2, mainwin_x / 2 - 3, "Empty");
-        wattroff(main_window, A_BOLD);
+        showEmpty();
     }
     wrefresh(main_window);
 }
@@ -787,9 +798,7 @@ void FileBrowser::plotCanvasAnnotations(TH2* hist) {
     }
 
     if (hist->GetEntries() == 0) {
-        wattron(main_window, A_BOLD);
-        mvwprintw(main_window, mainwin_y / 2, mainwin_x / 2 - 3, "Empty");
-        wattroff(main_window, A_BOLD);
+        showEmpty();
     }
     wrefresh(main_window);
 }
