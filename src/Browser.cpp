@@ -384,7 +384,7 @@ void FileBrowser::plotHistogram(TTree* tree, TLeaf* leaf) {
 
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, false);
-        plotASCIIHistogram(&hist, bins_y, bins_x);
+        plotASCIIHistogram(&hist, bins_y, bins_x, yaxis.min(), yaxis.max());
         plotCanvasAnnotations(&hist);
     }
     refresh();
@@ -498,7 +498,7 @@ void FileBrowser::plotHistogram(const Console::DrawArgs& args) {
 
         plotYAxis(yaxis, true);
         plotXAxis(xaxis, !varexp.limits.empty());
-        plotASCIIHistogram(&hist, bins_y, bins_x);
+        plotASCIIHistogram(&hist, bins_y, bins_x, yaxis.min(), yaxis.max());
         plotCanvasAnnotations(&hist);
     }
     else {
@@ -619,50 +619,50 @@ void FileBrowser::plot2DHistogram(const Console::DrawArgs& args) {
     refresh();
 }
 
-void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
-    double max_height = hist->GetAt(hist->GetMaximumBin())*top_hist_clear;
-    double pixel_y = max_height / binsy;
+void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx, double ymin, double ymax) const {
+    auto Y = [this, binsy, ymin, ymax](double y) {
+        if (logscale) {
+            double f = y / binsy;
+            return std::pow(10.0, ymin + f * (ymax - ymin));
+        }
+        else {
+            double pixel_y = (ymax - ymin) / binsy;
+            return y * pixel_y;
+        }
+    };
 
-    if (logscale) {
-        max_height = log(max_height) + 1.0F;  //+1 order of base magnitude for plotting
-        pixel_y = max_height / binsy;
-    }
     // Draw ASCII art
     wattron(main_window, COLOR_PAIR(col_whiteblue));
     for (int x = 0; x < binsx / 2; x++) {
         auto cl = hist->GetBinContent(2 * x);
         auto cr = hist->GetBinContent(2 * x + 1);
-        if (logscale) {
-            cl = log(cl);
-            cr = log(cr);
-        }
 
         if (blockmode == 4) {
             wattron(main_window, A_BOLD);
             for (int y = 0; y < binsy / 4; ++y) {
                 // Check if ascii character is filled
                 std::uint8_t probe = BLOCKS_code_4x2::BC_VOID;
-                probe |= ((4*y + 0) * pixel_y < cl) << 7;
-                probe |= ((4*y + 0) * pixel_y < cr) << 6;
-                probe |= ((4*y + 1) * pixel_y < cl) << 5;
-                probe |= ((4*y + 1) * pixel_y < cr) << 4;
-                probe |= ((4*y + 2) * pixel_y < cl) << 3;
-                probe |= ((4*y + 2) * pixel_y < cr) << 2;
-                probe |= ((4*y + 3) * pixel_y < cl) << 1;
-                probe |= ((4*y + 3) * pixel_y < cr) << 0;
+                probe |= (Y(4 * y + 0) < cl) << 7;
+                probe |= (Y(4 * y + 0) < cr) << 6;
+                probe |= (Y(4 * y + 1) < cl) << 5;
+                probe |= (Y(4 * y + 1) < cr) << 4;
+                probe |= (Y(4 * y + 2) < cl) << 3;
+                probe |= (Y(4 * y + 2) < cr) << 2;
+                probe |= (Y(4 * y + 3) < cl) << 1;
+                probe |= (Y(4 * y + 3) < cr) << 0;
                 if (probe == BLOCKS_code_4x2::BC_VOID) {
                     // fill rest with blanks, prevents overdraw...
                     for (int f = y; f < binsy / 4; ++f) {
-                        mvwprintw(main_window, mainwin_y-1-f, 1+x, " ");
+                        mvwprintw(main_window, mainwin_y-2-f, 1+x, " ");
                     }
                     break;
                 }
                 try {
                     auto print = ascii_4x2[ascii_map_4x2.at(static_cast<BLOCKS_code_4x2>(probe))];
-                    mvwprintw(main_window, mainwin_y-1-y, 1+x, "%s", print);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%s", print);
                 }
                 catch(...) {
-                    mvwprintw(main_window, mainwin_y-1-y, 1+x, "%i", probe);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%i", probe);
                     mvwprintw(main_window, 0, 0, "%i", probe);
                     clrtoeol();
                 }
@@ -673,25 +673,25 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
             for (int y = 0; y < binsy / 3; ++y) {
                 // Check if ascii character is filled
                 std::uint8_t probe = BLOCKS_code_3x2::EC_VOID;
-                probe |= ((3*y + 0) * pixel_y < cl) << 5;
-                probe |= ((3*y + 0) * pixel_y < cr) << 4;
-                probe |= ((3*y + 1) * pixel_y < cl) << 3;
-                probe |= ((3*y + 1) * pixel_y < cr) << 2;
-                probe |= ((3*y + 2) * pixel_y < cl) << 1;
-                probe |= ((3*y + 2) * pixel_y < cr) << 0;
+                probe |= (Y(3 * y + 0) < cl) << 5;
+                probe |= (Y(3 * y + 0) < cr) << 4;
+                probe |= (Y(3 * y + 1) < cl) << 3;
+                probe |= (Y(3 * y + 1) < cr) << 2;
+                probe |= (Y(3 * y + 2) < cl) << 1;
+                probe |= (Y(3 * y + 2) < cr) << 0;
                 if (probe == BLOCKS_code_3x2::EC_VOID) {
                     // fill rest with blanks, prevents overdraw...
                     for (int f = y; f < binsy / 3; ++f) {
-                        mvwprintw(main_window, mainwin_y-1-f, 1+x, " ");
+                        mvwprintw(main_window, mainwin_y-2-f, 1+x, " ");
                     }
                     break;
                 }
                 try {
                     auto print = ascii_3x2[ascii_map_3x2.at(static_cast<BLOCKS_code_3x2>(probe))];
-                    mvwprintw(main_window, mainwin_y-1-y, 1+x, "%s", print);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%s", print);
                 }
                 catch(...) {
-                    mvwprintw(main_window, mainwin_y-1-y, 1+x, "%i", probe);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%i", probe);
                     clrtoeol();
                 }
             }
@@ -700,23 +700,23 @@ void FileBrowser::plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const {
             for (int y = 0; y < binsy / 2; ++y) {
                 // Check if ascii character is filled
                 std::uint8_t probe = BLOCKS_code_2x2::C_VOID;
-                probe |= ((2*y + 0) * pixel_y < cl) << 3;
-                probe |= ((2*y + 0) * pixel_y < cr) << 2;
-                probe |= ((2*y + 1) * pixel_y < cl) << 1;
-                probe |= ((2*y + 1) * pixel_y < cr);
+                probe |= (Y(2 * y + 0) < cl) << 3;
+                probe |= (Y(2 * y + 0) < cr) << 2;
+                probe |= (Y(2 * y + 1) < cl) << 1;
+                probe |= (Y(2 * y + 1) < cr);
                 if (probe == BLOCKS_code_2x2::C_VOID) {
                     // fill rest with blanks, prevents overdraw...
                     for (int f = y; f < binsy / 2; ++f) {
-                        mvwprintw(main_window,mainwin_y-1-f, 1+x, " ");
+                        mvwprintw(main_window,mainwin_y-2-f, 1+x, " ");
                     }
                     break;
                 }
                 try {
                     auto print = ascii_2x2[ascii_map_2x2.at(static_cast<BLOCKS_code_2x2>(probe))];
-                    mvwprintw(main_window, mainwin_y-1-y, 1+x, "%s", print);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%s", print);
                 }
                 catch(...) {
-                    mvwprintw(main_window, mainwin_y-1-y, 1+x, "%i", probe);
+                    mvwprintw(main_window, mainwin_y-2-y, 1+x, "%i", probe);
                 }
             }
         }
@@ -865,8 +865,11 @@ void FileBrowser::plotYAxis(AxisTicks& ticks, bool force_range) {
         }
     }
 
-    // Write numbers below axis at tick positions
+    // Write numbers left of axis at tick positions
     auto nchars = sizey - 2;
+    //for (int i = 0; i < nchars; ++i) {
+    //    mvprintw( winy+ 1+ i,winx-5 , "%i", nchars-i-1);
+    //}
     ticks.setAxisPixels(nchars);
 
     std::vector<int> written_positions;

@@ -57,7 +57,7 @@ private:
     void plotYAxis(AxisTicks&, bool force_range);
     void plotCanvasAnnotations(TH1* hist);
     void plotCanvasAnnotations(TH2* hist);
-    void plotASCIIHistogram(TH1D* hist, int binsy, int binsx) const;
+    void plotASCIIHistogram(TH1D* hist, int binsy, int binsx, double ymin, double ymax) const;
     void plotASCIIHistogram2D(TH2D* hist, int binsy, int binsx);
     void drawEssentials();
     void showEmpty();
