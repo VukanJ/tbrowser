@@ -3,6 +3,12 @@ This application makes it possible to browse the content of a ROOT file directly
 It is meant to be fast (no GUI drawing) and to support basic `TTree->Draw(...)` commands.
 1D and 2D Histograms are drawn with Unicode block characters directly to the console.
 
+## Usage
+The NCurses-based UI works much like the builtin ROOT TBrowser application.
+```
+tbrowser <file.root>
+```
+
 ## Installation
 ```
 mkdir build
