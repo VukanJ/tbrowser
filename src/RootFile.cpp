@@ -1,5 +1,6 @@
 #include "RootFile.h"
 #include "TKey.h"
+#include "TClass.h"
 #include "definitions.h"
 #include <memory>
 
@@ -158,7 +159,24 @@ void RootFile::traverseTFile(TDirectory* dir, RootFile::Node* node, int depth) {
 
     for (int i = 0; i < keys->GetSize(); ++i) {
         TKey* key = dynamic_cast<TKey*>(keys->At(i));
+        if (key == nullptr) {
+            continue;
+        }
+
+        // Keys may store classes that don't inherit from TObject (e.g. a plain
+        // std::string). For those, TKey::ReadObj() returns the raw object
+        // pointer cast to TObject*, so any virtual call on it (IsA(),
+        // GetName(), ...) jumps through garbage and segfaults. Skip them, and
+        // also skip objects whose class/dictionary is unknown.
+        TClass* cl = TClass::GetClass(key->GetClassName());
+        if (cl == nullptr || !cl->IsTObject()) {
+            continue;
+        }
+
         TObject* obj = key->ReadObj();
+        if (obj == nullptr) {
+            continue;
+        }
 
         if (strcmp(key->GetClassName(), "TTree") == 0) {
             auto* tree = dynamic_cast<TTree*>(obj);
